@@ -1,22 +1,37 @@
-#include "Mirror.h"
+ï»¿#include "Mirror.h"
 #include <cmath>
 
 Mirror::Mirror(VECTOR start, VECTOR end) : m_start(start), m_end(end) {
     CalculateNormal();
+
+    m_isChange = false;
+
+    VECTOR LineDir = { 0,0,0 };
+    float dx = m_end.x - m_start.x;
+    float dy = m_end.y - m_start.y;
+    float length = std::sqrt(dx * dx + dy * dy);
+    if (length > 0.0f) {
+        float tmp = 1.f / length;
+        LineDir.x = dx * tmp;
+        LineDir.y = dy * tmp;
+        LineDir.z = 0.0f;
+    }
+
+    m_angle = atan2f(LineDir.y, LineDir.x);
 }
 
-// ”½ŽË”Â‚ÌŒü‚«i–@üj‚ðŒvŽZ‚·‚é
+// åå°„æ¿ã®å‘ãï¼ˆæ³•ç·šï¼‰ã‚’è¨ˆç®—ã™ã‚‹
 void Mirror::CalculateNormal() {
-    // 1. Žn“_‚©‚çI“_‚Ö‚ÌƒxƒNƒgƒ‹‚ðŒvŽZ
+    // 1. å§‹ç‚¹ã‹ã‚‰çµ‚ç‚¹ã¸ã®ãƒ™ã‚¯ãƒˆãƒ«ã‚’è¨ˆç®—
     float dx = m_end.x - m_start.x;
     float dy = m_end.y - m_start.y;
 
-    // 2. ƒxƒNƒgƒ‹‚ð90“x‰ñ“]‚³‚¹‚Ä‚’¼‚ÈƒxƒNƒgƒ‹i–@üj‚ðì‚é (-dy, dx)
-    // ¦¡‰ñ‚Íuü‚Ì‰E‘¤v‚ð”½ŽË–Ê‚Æ‚µ‚Äˆµ‚¢‚Ü‚·
+    // 2. ãƒ™ã‚¯ãƒˆãƒ«ã‚’90åº¦å›žè»¢ã•ã›ã¦åž‚ç›´ãªãƒ™ã‚¯ãƒˆãƒ«ï¼ˆæ³•ç·šï¼‰ã‚’ä½œã‚‹ (-dy, dx)
+    // â€»ä»Šå›žã¯ã€Œç·šã®å³å´ã€ã‚’åå°„é¢ã¨ã—ã¦æ‰±ã„ã¾ã™
     float nx = -dy;
     float ny = dx;
 
-    // 3. ƒxƒNƒgƒ‹‚Ì’·‚³‚ð1‚É‚·‚éi³‹K‰»j
+    // 3. ãƒ™ã‚¯ãƒˆãƒ«ã®é•·ã•ã‚’1ã«ã™ã‚‹ï¼ˆæ­£è¦åŒ–ï¼‰
     float length = std::sqrt(nx * nx + ny * ny);
     if (length > 0.0f) {
         float tmp = 1.f / length;
@@ -27,11 +42,58 @@ void Mirror::CalculateNormal() {
 }
 
 void Mirror::Draw() {
-    // ”½ŽË”Â‚ð—ÎF‚Ì‘¾ü‚Å•`‰æ
+    // åå°„æ¿ã‚’ç·‘è‰²ã®å¤ªç·šã§æç”»
     DrawLine((int)m_start.x, (int)m_start.y, (int)m_end.x, (int)m_end.y, GetColor(0, 255, 0), 5);
 
-    // yƒfƒoƒbƒO—pz–@üiŒü‚«j‚ª‚Ç‚¿‚ç‚ðŒü‚¢‚Ä‚¢‚é‚©A’†‰›‚©‚ç’Z‚¢ü‚ÅŽ‹Šo‰»
+    // ã€ãƒ‡ãƒãƒƒã‚°ç”¨ã€‘æ³•ç·šï¼ˆå‘ãï¼‰ãŒã©ã¡ã‚‰ã‚’å‘ã„ã¦ã„ã‚‹ã‹ã€ä¸­å¤®ã‹ã‚‰çŸ­ã„ç·šã§è¦–è¦šåŒ–
     int midX = (int)((m_start.x + m_end.x) / 2);
     int midY = (int)((m_start.y + m_end.y) / 2);
     DrawLine(midX, midY, midX + (int)(m_normal.x * 15), midY + (int)(m_normal.y * 15), GetColor(255, 255, 0), 1);
+}
+
+void Mirror::Update() {
+    
+    float oldAngle = m_angle;
+
+    if (m_isSelected) {
+        float wheelRot = GetMouseWheelRotVolF();
+
+        if (wheelRot != 0) {
+            float angleStep = 5.0f;
+            if (CheckHitKey(KEY_INPUT_LSHIFT) == 1 || CheckHitKey(KEY_INPUT_RSHIFT) == 1) {
+                angleStep *= 0.1f;
+            }
+
+            float deltaAngle = angleStep * wheelRot;
+
+            // ðŸ’¡ ã€ä¿®æ­£ç‚¹ã€‘ç¾åœ¨ã® start ã¨ end ã‹ã‚‰ã€ç¾åœ¨ã®æ­£ç¢ºãªè§’åº¦ï¼ˆåº¦æ•°æ³•ï¼‰ã‚’é€†ç®—ã™ã‚‹
+            float dx = m_end.x - m_start.x;
+            float dy = m_end.y - m_start.y;
+            float currentAngle = std::atan2f(dy, dx) * (180.0f / DX_PI_F);
+
+            // ðŸ’¡ é€†ç®—ã—ãŸç¾åœ¨ã®è§’åº¦ã«ã€ãƒ›ã‚¤ãƒ¼ãƒ«ã®ç§»å‹•é‡ã‚’è¶³ã™ï¼
+            m_angle = currentAngle + deltaAngle;
+
+            // 360åº¦ã®ãƒ«ãƒ¼ãƒ—å‡¦ç†
+            if (m_angle >= 360.f) m_angle -= 360.f;
+            if (m_angle < 0.f)    m_angle += 360.f;
+
+            // ðŸ’¡ è§’åº¦ãŒå¤‰ã‚ã£ãŸã®ã§å†é…ç½®ï¼ˆchangeã®ifæ–‡ã¯å¤–ã—ã¦ã€ãƒ›ã‚¤ãƒ¼ãƒ«ãŒå‹•ã„ãŸã‚‰ç¢ºå®Ÿã«å®Ÿè¡Œï¼‰
+            VECTOR center = VGet((m_start.x + m_end.x) / 2.0f, (m_start.y + m_end.y) / 2.0f, 0.0f);
+            float halfLength = std::sqrtf(dx * dx + dy * dy) * 0.5f;
+
+            float rad = m_angle * (DX_PI_F / 180.0f);
+            float cosA = std::cosf(rad);
+            float sinA = std::sinf(rad);
+
+            m_start.x = center.x - halfLength * cosA;
+            m_start.y = center.y - halfLength * sinA;
+            m_end.x = center.x + halfLength * cosA;
+            m_end.y = center.y + halfLength * sinA;
+
+            CalculateNormal();
+        }
+    }
+    // ðŸ’¡ oldAngleï¼ˆå‰ãƒ•ãƒ¬ãƒ¼ãƒ ã®è§’åº¦ï¼‰ã¨ç¾åœ¨ã®è§’åº¦ã‚’æ¯”è¼ƒã—ã¦å¤‰åŒ–ãƒ•ãƒ©ã‚°ã‚’ç¢ºå®š
+    m_isChange = (oldAngle != m_angle);
 }

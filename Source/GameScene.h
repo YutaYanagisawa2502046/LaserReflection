@@ -1,60 +1,30 @@
-#pragma once
+ï»¿#pragma once
 #include "Scene.h"
 #include "DxLib.h"
 #include <vector>
-
-class Mirror;
-class Laser;
-class LaserTarget;
-class Obstacle;
-
-struct StageData {
-    VECTOR laserPos;       // ƒŒ[ƒU[‚Ì‰ŠúˆÊ’u
-    VECTOR laserDir;       // ƒŒ[ƒU[‚Ì‰Šú•ûŒü
-    VECTOR targetPos;      // “I‚ÌˆÊ’u
-    float targetRadius;    // “I‚ÌƒTƒCƒY
-    int maxMirrors;        // g‚¦‚é‹¾‚Ì–‡”
-
-    // ‚±‚ÌƒXƒe[ƒW‚É‚ ‚é•Ç‚ÌƒŠƒXƒg
-    std::vector<Obstacle> obstacles;
-};
+#include "Stage.h" // ğŸ’¡ æ–°ã—ã„Stageã‚¯ãƒ©ã‚¹ã‚’ã‚¤ãƒ³ã‚¯ãƒ«ãƒ¼ãƒ‰
 
 class GameScene : public Scene {
 private:
-    Laser* m_laser;                  // ƒŒ[ƒU[‚ÌƒCƒ“ƒXƒ^ƒ“ƒX
-    LaserTarget* m_target;
-    std::vector<Mirror> m_mirrors;  // •¡”‚Ì”½Ë”Â‚ğŠÇ—‚·‚é“®“I”z—ñ
-    std::vector<Obstacle> m_obstacles;
+    std::vector<StageData> m_stages; // ãƒ¡ãƒ¢å¸³ãªã©ã‹ã‚‰èª­ã¿è¾¼ã‚“ã ã‚¹ãƒ†ãƒ¼ã‚¸ãƒ‡ãƒ¼ã‚¿ãƒ™ãƒ¼ã‚¹
+    Stage* m_currentStage;           // ğŸ’¡ ç¾åœ¨å‹•ã„ã¦ã„ã‚‹ã‚¹ãƒ†ãƒ¼ã‚¸ã®å®Ÿä½“
+    int m_currentStageIndex;         // ç¾åœ¨ã®ã‚¹ãƒ†ãƒ¼ã‚¸ç•ªå·
 
-    // ---- ‹¾‚Ìİ’u§ŒÀ—p‚Ì’Ç‰Á•Ï” ----
-    int m_maxMirrors;   // ‚±‚ÌƒXƒe[ƒW‚Åİ’u‚Å‚«‚é‹¾‚ÌÅ‘å”
-
-    // ---- ‹¾İ’u—p‚Ì’Ç‰Á•Ï” ----
-    bool m_isDragging;       // Œ»İƒ}ƒEƒX‚Åƒhƒ‰ƒbƒO’†‚©‚Ç‚¤‚©‚Ìƒtƒ‰ƒO
-    VECTOR m_dragStartPos;   // ƒhƒ‰ƒbƒO‚ğŠJn‚µ‚½À•WiƒNƒŠƒbƒN‚µ‚½ˆÊ’uj
-    VECTOR m_dragCurrentPos; // Œ»İ‚Ìƒ}ƒEƒXÀ•Wiƒhƒ‰ƒbƒO’†‚ÌƒvƒŒƒrƒ…[—pj
-
-    // šyV‹KzƒQ[ƒ€‚Ìisó‘Ô‚ğ•\‚·—ñ‹“Œ^
     enum class GameState {
-        Playing,    // ƒpƒYƒ‹‚ğ‰ğ‚¢‚Ä‚¢‚éÅ’†
-        Clear       // ƒXƒe[ƒWƒNƒŠƒA‚Ì‰‰o’†
+        Playing,    // ãƒ‘ã‚ºãƒ«ãƒ—ãƒ¬ã‚¤ä¸­
+        Clear       // ã‚¯ãƒªã‚¢æ¼”å‡ºä¸­
     };
 
-    GameState m_state;          // Œ»İ‚Ìisó‘Ô
-    int m_clearTimer;           // ƒNƒŠƒA”»’è—p‚ÌƒJƒEƒ“ƒgƒ^ƒCƒ}[
-    int m_stateTransitionTimer; // ƒXƒe[ƒWØ‚è‘Ö‚¦‰‰o—p‚Ìƒ^ƒCƒ}[
+    GameState m_state;
+    int m_clearTimer;               // ğŸ’¡ ç¢ºå®Ÿã«å±Šã„ã¦ã„ã‚‹ã‹ç¢ºèªã™ã‚‹ GameScene å´ã®ã‚¿ã‚¤ãƒãƒ¼
+    float m_stateTransitionTimer;   // æ¬¡ã®ã‚¹ãƒ†ãƒ¼ã‚¸ã¸ã®é·ç§»ã‚¿ã‚¤ãƒãƒ¼
 
-    // ‚±‚ê‚ğƒQ[ƒ€ƒV[ƒ“‘¤‚Å”z—ñiƒxƒNƒ^[j‚Æ‚µ‚Ä‚Á‚Ä‚¨‚­
-    std::vector<StageData> m_stages;
-    int m_currentStageIndex = 0; // ¡ƒXƒe[ƒW‚¢‚­‚ÂH
+    // ãƒ‰ãƒ©ãƒƒã‚°ï¼ˆé¡ã®ç”Ÿæˆï¼‰ã«é–¢ã™ã‚‹å…¥åŠ›çŠ¶æ…‹
+    bool m_isDragging;
+    VECTOR m_dragStartPos;
+    VECTOR m_dragCurrentPos;
 
-    // --- GameScene.h ‚Ì“à•”‚ÉˆÈ‰º‚ğ’Ç‰Á ---
-private:
-    // y’Ç‰Ázü•ª (p1-p2) ‚Æ“_ (pt) ‚ÌÅ’Z‹——£‚ğŒvZ‚·‚éŠÖ”i‹¾‚ÌƒNƒŠƒbƒN”»’è—pj
-    float GetDistanceLineToPoint(VECTOR p1, VECTOR p2, VECTOR pt);
-
-    // šyV‹Kzw’è‚µ‚½”Ô†‚ÌƒXƒe[ƒW‚ğ“Ç‚İ‚ŞŠÖ”
-    void LoadStage(int stageIndex);
+    void LoadStage(int index);      // æŒ‡å®šã—ãŸã‚¤ãƒ³ãƒ‡ãƒƒã‚¯ã‚¹ã®ã‚¹ãƒ†ãƒ¼ã‚¸ã‚’èª­ã¿è¾¼ã‚€
 
 public:
     GameScene();

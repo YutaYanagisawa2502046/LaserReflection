@@ -1,273 +1,234 @@
-#include "Laser.h"
+ï»¿#include "Laser.h"
 #include "Mirror.h"
 #include <cmath>
 #include "LaserTarget.h"
 #include "Obstacle.h"
+#include "Filter.h"
 
-Laser::Laser(VECTOR position, VECTOR direction, int maxReflections, float growSpeed)
-    : m_position(position), m_direction(direction), m_maxReflections(maxReflections)
-    , m_growSpeed(growSpeed), m_currentLength(0.0f), m_isLooping(false) {
+// ğŸ’¡ 1. ã¾ãšä¸€ç•ªä¸Šã« GetDistanceSq ã‚’å®šç¾©ã—ã¾ã™ï¼ˆã“ã‚Œã§ä¸‹ã®é–¢æ•°ã‹ã‚‰è¦‹ã¤ã‹ã‚‹ã‚ˆã†ã«ãªã‚Šã¾ã™ï¼‰
+float GetDistanceSq(VECTOR p1, VECTOR p2) {
+	return (p1.x - p2.x) * (p1.x - p2.x) + (p1.y - p2.y) * (p1.y - p2.y);
+}
 
-    float len = std::sqrt(m_direction.x * m_direction.x + m_direction.y * m_direction.y);
-    if (len > 0.0f) {
-        float tmp = 1.f / len;
-        m_direction.x *= tmp;
-        m_direction.y *= tmp;
+Laser::Laser(VECTOR position, VECTOR direction, LaserColor initalColor, int maxReflections, float growSpeed)
+	: m_position(position), m_direction(direction), m_maxReflections(maxReflections)
+	, m_growSpeed(growSpeed), m_currentLength(0.0f), m_isLooping(false) {
 
-    }
+	float len = std::sqrtf(m_direction.x * m_direction.x + m_direction.y * m_direction.y);
+	if (len > 0.0f) {
+		float tmp = 1.f / len;
+		m_direction.x *= tmp;
+		m_direction.y *= tmp;
+
+	}
 }
 
 void Laser::Reset() {
-    m_currentLength = 0.0f;
-    m_isLooping = false;     // ƒ‹[ƒvƒtƒ‰ƒO‚àƒŠƒZƒbƒg
+	m_currentLength = 0.0f;
+	m_isLooping = false;     // ãƒ«ãƒ¼ãƒ—ãƒ•ãƒ©ã‚°ã‚‚ãƒªã‚»ãƒƒãƒˆ
 }
 
 void Laser::Update() {
-    // ‚à‚µ–³ŒÀƒ‹[ƒv‚ğŒŸ’m‚µ‚Ä‚¢‚Ä‚àAŒ»İ‚Ì’·‚³‚ÌXV‚Í
-    // ƒ‹[ƒv‹O“¹ã‚ÅƒVƒ…ƒEƒEƒEƒb‚ÆÅŒã‚Ü‚ÅL‚Ñ‚«‚é‚½‚ß‚É‘±‚¯‚³‚¹‚Ü‚·
-    //if (m_currentLength < FLT_MAX) {
-        m_currentLength += m_growSpeed;
-    //}
+	// æ¯ãƒ•ãƒ¬ãƒ¼ãƒ ã€growSpeed åˆ†ã ã‘ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®é™ç•Œå¯è¦–é•·ã•ã‚’ä¼¸ã°ã—ã¦ã„ã
+	const float MAX_REACH = 3000.0f;
+	if (m_currentLength < MAX_REACH) {
+		m_currentLength += m_growSpeed;
+		if (m_currentLength > MAX_REACH) {
+			m_currentLength = MAX_REACH;
+		}
+	}
 }
 
-// “¯‚¶‹O“¹‚ª‚ ‚é‚©‰ß‹‚Ì—š—ğ‚ğƒ‹[ƒv‚Å’T‚·ŠÖ”
+// åŒã˜è»Œé“ãŒã‚ã‚‹ã‹éå»ã®å±¥æ­´ã‚’ãƒ«ãƒ¼ãƒ—ã§æ¢ã™é–¢æ•°
 bool Laser::IsDuplicateOrbit(VECTOR pos, VECTOR dir) {
-    // Œë·‚Ì‹–—e”ÍˆÍi1ƒsƒNƒZƒ‹–¢–‚ÌƒYƒŒ‚âA‚í‚¸‚©‚ÈŠp“x‚ÌƒYƒŒ‚ğ‹–—e‚·‚éj
-    const float EPSILON = 0.01f;
+	// èª¤å·®ã®è¨±å®¹ç¯„å›²ï¼ˆ1ãƒ”ã‚¯ã‚»ãƒ«æœªæº€ã®ã‚ºãƒ¬ã‚„ã€ã‚ãšã‹ãªè§’åº¦ã®ã‚ºãƒ¬ã‚’è¨±å®¹ã™ã‚‹ï¼‰
+	const float EPSILON = 0.01f;
 
-    for (const auto& record : m_history) {
-        // À•W‚Ì·‚ğŒvZ
-        float distDiff = std::sqrt(std::pow(record.position.x - pos.x, 2) + std::pow(record.position.y - pos.y, 2));
-        // •ûŒü‚Ì·‚ğŒvZ
-        float dirDiff = std::sqrt(std::pow(record.direction.x - dir.x, 2) + std::pow(record.direction.y - dir.y, 2));
+	for (const auto& record : m_history) {
+		// åº§æ¨™ã®å·®ã‚’è¨ˆç®—
+		float distDiff = std::sqrtf(std::powf(record.position.x - pos.x, 2) + std::powf(record.position.y - pos.y, 2));
+		// æ–¹å‘ã®å·®ã‚’è¨ˆç®—
+		float dirDiff = std::sqrtf(std::powf(record.direction.x - dir.x, 2) + std::powf(record.direction.y - dir.y, 2));
 
-        // À•W‚à•ûŒü‚à‚Ù‚Úˆê‚È‚çu“¯‚¶‹O“¹v‚Æ‚İ‚È‚·
-        if (distDiff < EPSILON && dirDiff < EPSILON) {
-            return true;
-        }
-    }
-    return false;
+		// åº§æ¨™ã‚‚æ–¹å‘ã‚‚ã»ã¼ä¸€ç·’ãªã‚‰ã€ŒåŒã˜è»Œé“ã€ã¨ã¿ãªã™
+		if (distDiff < EPSILON && dirDiff < EPSILON) {
+			return true;
+		}
+	}
+	return false;
 }
 
-// Œğ·”»’èi•ÏX‚È‚µ‚Ì‚½‚ßÈ—ªj
+// äº¤å·®åˆ¤å®šï¼ˆå¤‰æ›´ãªã—ã®ãŸã‚çœç•¥ï¼‰
 bool Laser::CheckLineIntersection(VECTOR p1, VECTOR p2, VECTOR p3, VECTOR p4, VECTOR* outIntersection) {
-    float d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
-    if (std::abs(d) < 0.0001f) return false; // •½s‚Èê‡‚ÍŒğ·‚µ‚È‚¢
+	float d = (p2.x - p1.x) * (p4.y - p3.y) - (p2.y - p1.y) * (p4.x - p3.x);
+	if (std::fabsf(d) < 0.0001f) return false; // å¹³è¡Œãªå ´åˆã¯äº¤å·®ã—ãªã„
 
-    float u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
-    float v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
+	float u = ((p3.x - p1.x) * (p4.y - p3.y) - (p3.y - p1.y) * (p4.x - p3.x)) / d;
+	float v = ((p3.x - p1.x) * (p2.y - p1.y) - (p3.y - p1.y) * (p2.x - p1.x)) / d;
 
-    // u, v ‚Æ‚à‚É 0`1 ‚ÌŠÔ‚Å‚ ‚ê‚Îü•ª“¯m‚ªŒğ·‚µ‚Ä‚¢‚é
-    if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f) {
-        if (outIntersection != nullptr) {
-            outIntersection->x = p1.x + u * (p2.x - p1.x);
-            outIntersection->y = p1.y + u * (p2.y - p1.y);
-            outIntersection->z = 0.0f;
-        }
-        return true;
-    }
-    return false;
+	// u, v ã¨ã‚‚ã« 0ï½1 ã®é–“ã§ã‚ã‚Œã°ç·šåˆ†åŒå£«ãŒäº¤å·®ã—ã¦ã„ã‚‹
+	if (u >= 0.0f && u <= 1.0f && v >= 0.0f && v <= 1.0f) {
+		if (outIntersection != nullptr) {
+			outIntersection->x = p1.x + u * (p2.x - p1.x);
+			outIntersection->y = p1.y + u * (p2.y - p1.y);
+			outIntersection->z = 0.0f;
+		}
+		return true;
+	}
+	return false;
 }
 
-// ü•ª‚Æ“_‚ÌÅ’Z‹——£‚ğ‹‚ß‚éi”Šw‚Ì’èÎƒƒWƒbƒNj
+// ç·šåˆ†ã¨ç‚¹ã®æœ€çŸ­è·é›¢ã‚’æ±‚ã‚ã‚‹ï¼ˆæ•°å­¦ã®å®šçŸ³ãƒ­ã‚¸ãƒƒã‚¯ï¼‰
 float Laser::GetDistanceLineToPoint(VECTOR p1, VECTOR p2, VECTOR pt) {
-    float dx = p2.x - p1.x;
-    float dy = p2.y - p1.y;
-    float lensq = dx * dx + dy * dy;
+	float dx = p2.x - p1.x;
+	float dy = p2.y - p1.y;
+	float lensq = dx * dx + dy * dy;
 
-    if (lensq == 0.0f) return std::sqrt(std::pow(pt.x - p1.x, 2) + std::pow(pt.y - p1.y, 2));
+	if (lensq == 0.0f) return std::sqrtf(std::powf(pt.x - p1.x, 2) + std::powf(pt.y - p1.y, 2));
 
-    // ü•ªã‚Ì‚Ç‚±‚ÌˆÊ’u‚ª“_‚Éˆê”Ô‹ß‚¢‚©i”ä—¦ tj‚ğŒvZ
-    float t = ((pt.x - p1.x) * dx + (pt.y - p1.y) * dy) / lensq;
+	// ç·šåˆ†ä¸Šã®ã©ã“ã®ä½ç½®ãŒç‚¹ã«ä¸€ç•ªè¿‘ã„ã‹ï¼ˆæ¯”ç‡ tï¼‰ã‚’è¨ˆç®—
+	float t = ((pt.x - p1.x) * dx + (pt.y - p1.y) * dy) / lensq;
 
-    // 0`1‚Ì”ÍˆÍ‚ÉƒNƒ‰ƒ“ƒviü•ª‚ÌŠO‘¤‚És‚©‚È‚¢‚æ‚¤‚É‚·‚éj
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
+	// 0ï½1ã®ç¯„å›²ã«ã‚¯ãƒ©ãƒ³ãƒ—ï¼ˆç·šåˆ†ã®å¤–å´ã«è¡Œã‹ãªã„ã‚ˆã†ã«ã™ã‚‹ï¼‰
+	if (t < 0.0f) t = 0.0f;
+	if (t > 1.0f) t = 1.0f;
 
-    // Å’Z‹——£‚É‚ ‚éü•ªã‚ÌÀ•W
-    float closestX = p1.x + t * dx;
-    float closestY = p1.y + t * dy;
+	// æœ€çŸ­è·é›¢ã«ã‚ã‚‹ç·šåˆ†ä¸Šã®åº§æ¨™
+	float closestX = p1.x + t * dx;
+	float closestY = p1.y + t * dy;
 
-    // ‚»‚Ì“_‚Æƒ^[ƒQƒbƒg(pt)‚Æ‚Ì‹——£‚ğ•Ô‚·
-    return std::sqrt(std::pow(pt.x - closestX, 2) + std::pow(pt.y - closestY, 2));
+	// ãã®ç‚¹ã¨ã‚¿ãƒ¼ã‚²ãƒƒãƒˆ(pt)ã¨ã®è·é›¢ã‚’è¿”ã™
+	return std::sqrtf(std::powf(pt.x - closestX, 2) + std::powf(pt.y - closestY, 2));
 }
 
-void Laser::Draw(const std::vector<Mirror>& mirrors, const std::vector<Obstacle>& obstacles, LaserTarget& target) {
-    VECTOR currentStart = m_position;
-    VECTOR currentDir = m_direction;
-    float remainingLength = m_currentLength;
+void Laser::Draw(const std::vector<Mirror>& mirrors,
+	const std::vector<Obstacle>& obstacles,
+	const std::vector<Filter>& filters,
+	LaserTarget& target)
+{
+	VECTOR currentStart = m_position;
+	VECTOR currentDir = m_direction;
+	float remainingLength = m_currentLength; // æœ€å¤§å°„ç¨‹
 
-    for (int i = 0; i < 200; ++i) {
-        if (remainingLength <= 0.0f) break;
+	LaserColor currentLaserColor = LaserColor::Red;
+	bool hasFilter = !filters.empty();
 
-        VECTOR currentEnd;
-        currentEnd.x = currentStart.x + currentDir.x * 2000.0f;
-        currentEnd.y = currentStart.y + currentDir.y * 2000.0f;
-        currentEnd.z = 0.0f;
+	for (int i = 0; i < 200; ++i) {
+		if (remainingLength <= 0.0f) break;
 
-        // ˆê”Ô‹ß‚¢Õ“ËƒIƒuƒWƒFƒNƒg‚ğ’T‚·‚½‚ß‚Ì•Ï”
-        const Mirror* closestMirror = nullptr;
-        const Obstacle* closestObstacle = nullptr; // š’Ç‰Á
-        VECTOR closestPoint = currentEnd;
-        float minDistance = 999999.0f;
+		VECTOR currentEnd;
+		currentEnd.x = currentStart.x + currentDir.x * remainingLength;
+		currentEnd.y = currentStart.y + currentDir.y * remainingLength;
+		currentEnd.z = 0.0f;
 
-        // ‡@ ‚·‚×‚Ä‚Ìu‹¾v‚Æ‚ÌÕ“Ëƒ`ƒFƒbƒNiŠù‘¶‚Ìˆ—j
-        for (const auto& mirror : mirrors) {
-            VECTOR intersect;
-            if (CheckLineIntersection(currentStart, currentEnd, mirror.GetStart(), mirror.GetEnd(), &intersect)) {
-                float dist = std::sqrt(std::pow(intersect.x - currentStart.x, 2) + std::pow(intersect.y - currentStart.y, 2));
-                if (dist > 0.5f && dist < minDistance) {
-                    minDistance = dist;
-                    closestPoint = intersect;
-                    closestMirror = &mirror;
-                    closestObstacle = nullptr; // ‹¾‚ªb’è1ˆÊ‚È‚Ì‚Å•Ç‚ÍƒŠƒZƒbƒg
-                }
-            }
-        }
+		const Mirror* closestMirror = nullptr;
+		const Obstacle* closestObstacle = nullptr;
+		const Filter* closestFilter = nullptr;
 
-        // ‡A ‚·‚×‚Ä‚Ìu‹zû•Çv‚Æ‚ÌÕ“Ëƒ`ƒFƒbƒNišV‹K’Ç‰Áj
-        for (const auto& obstacle : obstacles) {
-            VECTOR intersect;
-            if (CheckLineIntersection(currentStart, currentEnd, obstacle.GetStart(), obstacle.GetEnd(), &intersect)) {
-                float dist = std::sqrt(std::pow(intersect.x - currentStart.x, 2) + std::pow(intersect.y - currentStart.y, 2));
-                if (dist > 0.5f && dist < minDistance) {
-                    minDistance = dist;
-                    closestPoint = intersect;
-                    closestMirror = nullptr; // •Ç‚ªb’è1ˆÊ‚É‚È‚Á‚½‚Ì‚Å‹¾‚ğƒŠƒZƒbƒg
-                    closestObstacle = &obstacle;
-                }
-            }
-        }
+		VECTOR closestPoint = currentEnd;
 
-        // •`‰æ‚·‚éü•ª‚Ì’·‚³‚ğŠm’è
-        float segmentLength = minDistance;
-        bool stopGrowing = false;
+		// ğŸ’¡ 2ä¹—ã§ã¯ãªãã€é€šå¸¸ã®ã€Œè·é›¢ã€ã§æ¯”è¼ƒã™ã‚‹ã‚ˆã†ã«å¤‰æ›´ã—ã¾ã™
+		float minDistance = remainingLength;
 
-        if (segmentLength > remainingLength) {
-            segmentLength = remainingLength;
-            closestPoint.x = currentStart.x + currentDir.x * segmentLength;
-            closestPoint.y = currentStart.y + currentDir.y * segmentLength;
-            closestMirror = nullptr;
-            closestObstacle = nullptr; // ‚Ç‚±‚É‚à“Í‚©‚¸‚É“rØ‚ê‚½
-            stopGrowing = true;
-        }
+		// ----------------------------------------------------
+		// 1. é¡ã¨ã®è¡çªåˆ¤å®š
+		// ----------------------------------------------------
+		for (const auto& mirror : mirrors) {
+			VECTOR intersect;
+			if (CheckLineIntersection(currentStart, currentEnd, mirror.GetStart(), mirror.GetEnd(), &intersect)) {
+				// ğŸ’¡ sqrt ã‚’ã“ã“ã§ã‹ã‘ã¦ã€æ­£ã—ã„è·é›¢ï¼ˆãƒ”ã‚¯ã‚»ãƒ«å˜ä½ï¼‰ã‚’å‡ºã—ã¾ã™
+				float dist = std::sqrtf(GetDistanceSq(currentStart, intersect));
+				if (dist > 1.0f && dist < minDistance) {
+					minDistance = dist;
+					closestPoint = intersect;
+					closestMirror = &mirror;
+					closestObstacle = nullptr;
+					closestFilter = nullptr;
+				}
+			}
+		}
 
-        // ‡B “I‚Æ‚Ì“–‚½‚è”»’èiŠù‘¶‚Ìˆ—j
-        float distToTarget = GetDistanceLineToPoint(currentStart, closestPoint, target.GetPosition());
-        if (distToTarget <= target.GetRadius()) {
-            target.SetHit();
-        }
+		// ----------------------------------------------------
+		// 2. å£ï¼ˆéšœå®³ç‰©ï¼‰ã¨ã®è¡çªåˆ¤å®š
+		// ----------------------------------------------------
+		for (const auto& obstacle : obstacles) {
+			VECTOR intersect;
+			if (CheckLineIntersection(currentStart, currentEnd, obstacle.GetStart(), obstacle.GetEnd(), &intersect)) {
+				float dist = std::sqrtf(GetDistanceSq(currentStart, intersect));
+				if (dist > 1.0f && dist < minDistance) {
+					minDistance = dist;
+					closestPoint = intersect;
+					closestMirror = nullptr;
+					closestObstacle = &obstacle;
+					closestFilter = nullptr;
+				}
+			}
+		}
 
-        // ƒŒ[ƒU[‚Ìü‚ğ•`‰æ
-        DrawLine((int)currentStart.x, (int)currentStart.y, (int)closestPoint.x, (int)closestPoint.y, GetColor(255, 0, 0), 2);
+		// ----------------------------------------------------
+		// 3. ã‚«ãƒ©ãƒ¼ãƒ•ã‚£ãƒ«ã‚¿ãƒ¼ã¨ã®è¡çªåˆ¤å®š
+		// ----------------------------------------------------
+		for (const auto& filter : filters) {
+			VECTOR intersect;
+			if (CheckLineIntersection(currentStart, currentEnd, filter.GetStart(), filter.GetEnd(), &intersect)) {
+				float dist = std::sqrtf(GetDistanceSq(currentStart, intersect));
+				if (dist > 1.0f && dist < minDistance) {
+					minDistance = dist;
+					closestPoint = intersect;
+					closestMirror = nullptr;
+					closestObstacle = nullptr;
+					closestFilter = &filter;
+				}
+			}
+		}
 
-        remainingLength -= segmentLength;
+		// ----------------------------------------------------
+		// 4. çš„ï¼ˆLaserTargetï¼‰ã¸ã®å½“ãŸã‚Šåˆ¤å®š
+		// ----------------------------------------------------
+		float distToTarget = GetDistanceLineToPoint(currentStart, closestPoint, target.GetPosition());
+		if (distToTarget <= target.GetRadius()) {
+			target.SetHit(currentLaserColor, hasFilter);
+		}
 
-        // šy‚±‚±‚ªŠÌz‚à‚µˆê”Ô‹ß‚¢‚Ì‚ªu‹zû•Çv‚¾‚Á‚½A‚ ‚é‚¢‚Í¬’·ŒÀŠE‚È‚çA”½Ë‚¹‚¸‚É‚±‚±‚ÅI—¹I
-        if (closestObstacle != nullptr || closestMirror == nullptr || stopGrowing) {
-            break;
-        }
+		// ----------------------------------------------------
+		// 5. ãƒ¬ãƒ¼ã‚¶ãƒ¼ã®æç”»å‡¦ç†
+		// ----------------------------------------------------
+		unsigned int drawColor = (currentLaserColor == LaserColor::Red) ? GetColor(255, 50, 50) : ((currentLaserColor == LaserColor::Green) ? GetColor(50, 255, 50) : GetColor(50, 50, 255));
+		if (currentLaserColor == LaserColor::Green)
+			drawColor = GetColor(50, 255, 50);
+		else if (currentLaserColor == LaserColor::Blue)
+			drawColor = GetColor(50, 50, 255);
 
-        // ‡C ‹¾‚¾‚Á‚½ê‡‚Ì”½ËƒxƒNƒgƒ‹ŒvZiŠù‘¶‚Ìˆ—j
-        VECTOR N = closestMirror->GetNormal();
-        float dotProduct = currentDir.x * N.x + currentDir.y * N.y;
 
-        currentStart = closestPoint;
-        currentDir.x = currentDir.x - 2.0f * dotProduct * N.x;
-        currentDir.y = currentDir.y - 2.0f * dotProduct * N.y;
-    }
+		// æ­£ã—ã„äº¤ç‚¹ï¼ˆclosestPointï¼‰ã¾ã§ç·šã‚’å¼•ã
+		DrawLine((int)currentStart.x, (int)currentStart.y, (int)closestPoint.x, (int)closestPoint.y, drawColor, 2);
+
+		// ğŸ’¡ æ­£ã—ã„è·é›¢ï¼ˆminDistanceï¼‰ã‚’ãƒã‚¤ãƒŠã‚¹ã™ã‚‹ã®ã§ã€æ®‹ã‚Šã®é•·ã•ãŒæ­£å¸¸ã«ç¶­æŒã•ã‚Œã¾ã™
+		remainingLength -= minDistance;
+
+		// ----------------------------------------------------
+		// 6. è¡çªå¾Œã®æŒ™å‹•åˆ†å²
+		// ----------------------------------------------------
+		if (closestMirror != nullptr) {
+			VECTOR N = closestMirror->GetNormal();
+			float dotProduct = currentDir.x * N.x + currentDir.y * N.y;
+
+			currentStart = closestPoint;
+			currentDir.x = currentDir.x - 2.0f * dotProduct * N.x;
+			currentDir.y = currentDir.y - 2.0f * dotProduct * N.y;
+
+			float len = std::sqrtf(currentDir.x * currentDir.x + currentDir.y * currentDir.y);
+			if (len > 0.0f) { currentDir.x /= len; currentDir.y /= len; }
+		}
+		else if (closestFilter != nullptr) {
+			currentStart = closestPoint;
+			currentLaserColor = closestFilter->GetLaserColor();
+		}
+		else if (closestObstacle != nullptr) {
+			break;
+		}
+		else {
+			break;
+		}
+	}
 }
-
-//void Laser::Draw(const std::vector<Mirror>& mirrors) {
-//    // •`‰æ‚ªn‚Ü‚éuŠÔ‚ÉA‘OƒtƒŒ[ƒ€‚Ì—š—ğ‚ğƒNƒŠƒA‚·‚é
-//    m_history.clear();
-//
-//    VECTOR currentStart = m_position;
-//    VECTOR currentDir = m_direction;
-//    float remainingLength = m_currentLength;
-//
-//    // Å‰‚Ì”­Ë“_‚ğ—š—ğ‚É“o˜^
-//    m_history.push_back({ currentStart, currentDir });
-//
-//    // ˆê“I‚Éƒ‹[ƒvƒtƒ‰ƒO‚ğ‹U‚É‚µ‚ÄA–{“–‚Éƒ‹[ƒv‚ªŒq‚ª‚Á‚½‚¾‚¯^‚É‚·‚é
-//    m_isLooping = false;
-//
-//    for (int i = 0; i < m_maxReflections; ++i) {
-//        if (remainingLength <= 0.0f) break;
-//
-//        VECTOR currentEnd;
-//        currentEnd.x = currentStart.x + currentDir.x * 2000.0f;
-//        currentEnd.y = currentStart.y + currentDir.y * 2000.0f;
-//        currentEnd.z = 0.0f;
-//
-//        const Mirror* closestMirror = nullptr;
-//        VECTOR closestPoint = currentEnd;
-//        float minDistance = FLT_MAX;
-//
-//        for (const auto& mirror : mirrors) {
-//            VECTOR intersect;
-//            if (CheckLineIntersection(currentStart, currentEnd, mirror.GetStart(), mirror.GetEnd(), &intersect)) {
-//                float dist = std::sqrt(std::pow(intersect.x - currentStart.x, 2) + std::pow(intersect.y - currentStart.y, 2));
-//
-//                // y‰ü—Çƒ|ƒCƒ“ƒg1z–§’…‚Ì˜A‘±Œë”»’è‚ğ–h‚®‚½‚ßA1.0ƒsƒNƒZƒ‹ˆÈãi‚ñ‚¾ê‡‚Ì‚İÕ“Ë‚Æ‚İ‚È‚·
-//                if (dist > 1.0f && dist < minDistance) {
-//                    minDistance = dist;
-//                    closestPoint = intersect;
-//                    closestMirror = &mirror;
-//                }
-//            }
-//        }
-//
-//        float segmentLength = minDistance;
-//        bool stopGrowing = false;
-//
-//        if (segmentLength > remainingLength) {
-//            segmentLength = remainingLength;
-//            closestPoint.x = currentStart.x + currentDir.x * segmentLength;
-//            closestPoint.y = currentStart.y + currentDir.y * segmentLength;
-//            closestMirror = nullptr;
-//            stopGrowing = true;
-//        }
-//
-//        // ƒŒ[ƒU[‚ğ•`‰æi’Êí‚ÍÔA–³ŒÀƒ‹[ƒvŠm’è‚Í…F‚Éj
-//        int laserColor = m_isLooping ? GetColor(0, 255, 255) : GetColor(255, 0, 0);
-//        DrawLine((int)currentStart.x, (int)currentStart.y, (int)closestPoint.x, (int)closestPoint.y, laserColor, 2);
-//
-//        remainingLength -= segmentLength;
-//
-//        if (closestMirror == nullptr || stopGrowing) {
-//            break;
-//        }
-//
-//        // ”½ËƒxƒNƒgƒ‹‚ÌŒvZ
-//        VECTOR N = closestMirror->GetNormal();
-//        float dotProduct = currentDir.x * N.x + currentDir.y * N.y;
-//        VECTOR nextDir;
-//        nextDir.x = currentDir.x - 2.0f * dotProduct * N.x;
-//        nextDir.y = currentDir.y - 2.0f * dotProduct * N.y;
-//        nextDir.z = 0.0f;
-//
-//        VECTOR nextStart = closestPoint;
-//
-//        // y‰ü—Çƒ|ƒCƒ“ƒg2z‚µ‚Á‚©‚è‚Æ‹——£i3ƒsƒNƒZƒ‹ˆÈãj‚ği‚ñ‚¾”½Ë—š—ğ‚¾‚¯‚ğ‘ÎÛ‚Éƒ‹[ƒvƒ`ƒFƒbƒN‚ğs‚¤
-//        // ‚±‚ê‚É‚æ‚èA“¯‚¶‹¾‚Ì“¯‚¶ˆÊ’u‚Å˜A‘±‚µ‚Ä”÷¬‚È”½Ë‚ª‹N‚«‚½Û‚ÌŒëŒŸ’m‚ğŠ®‘S‚ÉƒVƒƒƒbƒgƒAƒEƒg‚µ‚Ü‚·
-//        if (minDistance > 3.0f && IsDuplicateOrbit(nextStart, nextDir)) {
-//            m_isLooping = true;
-//
-//            // ƒ‹[ƒv‚ğ•Â‚¶‚éÅŒã‚Ì1–{‚ğAc‚è‚Ì’·‚³‚Ì”ÍˆÍ‚Å•`‰æ‚µ‚ÄI—¹
-//            if (remainingLength > 0.0f) {
-//                // ƒ‹[ƒv‚ªãY—í‚É•Â‚¶‚é‚æ‚¤‚ÉAŒğ“_‚Ü‚Å‚Ìü‚ğˆø‚¢‚Ä‚©‚çƒuƒŒƒCƒN
-//                DrawLine((int)currentStart.x, (int)currentStart.y, (int)nextStart.x, (int)nextStart.y, GetColor(0, 255, 255), 2);
-//            }
-//            break;
-//        }
-//
-//        // ³í‚Éˆê’èˆÈã‚Ì‹——£‚ği‚ñ‚¾‹O“¹‚Ì‚İA—š—ğ‚É“o˜^‚·‚é
-//        if (minDistance > 3.0f) {
-//            m_history.push_back({ nextStart, nextDir });
-//        }
-//
-//        currentStart = nextStart;
-//        currentDir = nextDir;
-//    }
-//}

@@ -1,231 +1,226 @@
 ﻿#include "GameScene.h"
 #include "DxLib.h"
-#include "Mirror.h"
-#include "Obstacle.h"
-#include "Laser.h"
-#include "LaserTarget.h"
 #include <cmath>
+#include <string>
+#include <fstream>  // 💡 追加：ファイル入力用
+#include <sstream>  // 💡 追加：文字列解析用
 
 GameScene::GameScene()
-    : m_laser(nullptr)
-    , m_target(nullptr)
+    : m_currentStage(nullptr)
+    , m_currentStageIndex(0)
+    , m_state(GameState::Playing)
+    , m_clearTimer(0)
+    , m_stateTransitionTimer(0.0f)
     , m_isDragging(false)
     , m_dragStartPos(VGet(0, 0, 0))
     , m_dragCurrentPos(VGet(0, 0, 0))
-    , m_currentStageIndex(0)
-    , m_maxMirrors(0)
-    , m_state(GameState::Playing) // ★初期状態はプレイ中
-    , m_clearTimer(0)
-    , m_stateTransitionTimer(0)
 {
 }
 
 GameScene::~GameScene() {
-    if (m_laser != nullptr)  delete m_laser;
-    if (m_target != nullptr) delete m_target;
+    if (m_currentStage != nullptr) {
+        delete m_currentStage;
+    }
 }
 
-// Initialize や LoadStage の基本はそのままですが、少し追記します
 void GameScene::Initialize() {
     m_stages.clear();
 
-    // ---- ステージデータベース（前回作ったもの） ----
-    StageData stage1;
-    stage1.laserPos = VGet(50, 150, 0); stage1.laserDir = VGet(1.0f, 0.0f, 0);
-    stage1.targetPos = VGet(550, 400, 0); stage1.targetRadius = 25.0f; stage1.maxMirrors = 2;
-    stage1.obstacles.push_back(Obstacle(VGet(250, 0, 0), VGet(250, 300, 0)));
-    m_stages.push_back(stage1);
 
-    StageData stage2;
-    stage2.laserPos = VGet(50, 450, 0); stage2.laserDir = VGet(1.0f, -0.5f, 0);
-    stage2.targetPos = VGet(550, 100, 0); stage2.targetRadius = 20.0f; stage2.maxMirrors = 3;
-    stage2.obstacles.push_back(Obstacle(VGet(300, 0, 0), VGet(300, 200, 0)));
-    stage2.obstacles.push_back(Obstacle(VGet(300, 300, 0), VGet(300, 600, 0)));
-    m_stages.push_back(stage2);
+    {
+        // 💡 1. 実行ファイルと同じフォルダにある「StageData.txt」を開く
+        std::ifstream file("Stage/StageData.txt");
+        if (!file.is_open()) {
+            // ファイルが見つからない場合はポップアップで警告して終了
+            MessageBox(NULL, "StageData.txt が見つかりません！\nexeと同じフォルダに作成してください。", "Error", MB_OK);
+            return;
+        }
 
-    // ★テスト用にもう1つ簡単なステージ3を追加（全クリア確認用）
-    StageData stage3;
-    stage3.laserPos = VGet(50, 300, 0); stage3.laserDir = VGet(1.0f, 0.0f, 0);
-    stage3.targetPos = VGet(550, 300, 0); stage3.targetRadius = 30.0f; stage3.maxMirrors = 0; // 鏡なしでクリア！
-    m_stages.push_back(stage3);
+        std::string line;
+        StageData currentStage;
+        bool isReadingStage = false;
+
+        // 💡 2. メモ帳を1行ずつループで読み込む
+        while (std::getline(file, line)) {
+            // 空行や、'#' から始まるコメント行は処理を飛ばす
+            if (line.empty() || line[0] == '#') continue;
+
+            // カンマ「,」で文字を細かく分解する準備
+            std::stringstream ss(line);
+            std::string token;
+            std::getline(ss, token, ','); // 行の先頭の単語（LASER や TARGET など）を取得
+
+            if (token == "STAGE_START") {
+                currentStage = StageData(); // 構造体をきれいにリセット
+                isReadingStage = true;
+            }
+            else if (token == "STAGE_END") {
+                if (isReadingStage) {
+                    m_stages.push_back(currentStage); // 解析が終わったステージデータをデータベースに保存！
+                    isReadingStage = false;
+                }
+            }
+            else if (token == "LASER") {
+                std::string x, y, dx, dy;
+                std::getline(ss, x, ','); std::getline(ss, y, ',');
+                std::getline(ss, dx, ','); std::getline(ss, dy, ',');
+                currentStage.laserPos = VGet(std::stof(x), std::stof(y), 0.0f);
+                currentStage.laserDir = VGet(std::stof(dx), std::stof(dy), 0.0f);
+            }
+            else if (token == "TARGET") {
+                std::string x, y, radius, colorStr;
+                std::getline(ss, x, ','); std::getline(ss, y, ',');
+                std::getline(ss, radius, ','); std::getline(ss, colorStr, ',');
+                currentStage.targetPos = VGet(std::stof(x), std::stof(y), 0.0f);
+                currentStage.targetRadius = std::stof(radius);
+
+                // テキスト側の「0, 1, 2」を LaserColor の列挙型に安全に変換
+                currentStage.requiredColor = static_cast<LaserColor>(std::stoi(colorStr));
+            }
+            else if (token == "MAX_MIRRORS") {
+                std::string maxM;
+                std::getline(ss, maxM, ',');
+                currentStage.maxMirrors = std::stoi(maxM);
+            }
+            else if (token == "OBSTACLE") {
+                std::string x1, y1, x2, y2;
+                std::getline(ss, x1, ','); std::getline(ss, y1, ',');
+                std::getline(ss, x2, ','); std::getline(ss, y2, ',');
+                currentStage.obstacles.push_back(Obstacle(
+                    VGet(std::stof(x1), std::stof(y1), 0.0f),
+                    VGet(std::stof(x2), std::stof(y2), 0.0f)
+                ));
+            }
+            else if (token == "FILTER") {
+                std::string x1, y1, x2, y2, colorStr;
+                std::getline(ss, x1, ','); std::getline(ss, y1, ',');
+                std::getline(ss, x2, ','); std::getline(ss, y2, ',');
+                std::getline(ss, colorStr, ',');
+                currentStage.filters.push_back(Filter(
+                    VGet(std::stof(x1), std::stof(y1), 0.0f),
+                    VGet(std::stof(x2), std::stof(y2), 0.0f),
+                    static_cast<LaserColor>(std::stoi(colorStr))
+                ));
+            }
+        }
+
+        file.close(); // ファイルを閉じる
+
+    }
 
     m_currentStageIndex = 0;
     LoadStage(m_currentStageIndex);
 }
 
-void GameScene::LoadStage(int stageIndex) {
-    if (stageIndex < 0 || stageIndex >= (int)m_stages.size()) return;
+void GameScene::LoadStage(int index) {
+    // 古いステージ実体を削除
+    if (m_currentStage != nullptr) {
+        delete m_currentStage;
+        m_currentStage = nullptr;
+    }
 
-    const StageData& data = m_stages[stageIndex];
-    if (m_laser != nullptr)  delete m_laser;
-    if (m_target != nullptr) delete m_target;
+    // データベースから新しいステージをインスタンス化
+    if (index < (int)m_stages.size()) {
+        m_currentStage = new Stage(m_stages[index]);
+    }
 
-    m_laser = new Laser(data.laserPos, data.laserDir, 20, 6.0f);
-    m_target = new LaserTarget(data.targetPos, data.targetRadius);
-    m_maxMirrors = data.maxMirrors;
-    m_obstacles = data.obstacles;
-
-    m_mirrors.clear();
-    m_isDragging = false;
-
-    // ★ステージ読み込み時にタイマーと状態をプレイ中に戻す
     m_state = GameState::Playing;
     m_clearTimer = 0;
-    m_stateTransitionTimer = 0;
-}
-
-// 【追加】線分と点の最短距離を求める関数（Laser.cpp のものと同じです）
-float GameScene::GetDistanceLineToPoint(VECTOR p1, VECTOR p2, VECTOR pt) {
-    float dx = p2.x - p1.x;
-    float dy = p2.y - p1.y;
-    float lensq = dx * dx + dy * dy;
-    if (lensq == 0.0f) return std::sqrt(std::pow(pt.x - p1.x, 2) + std::pow(pt.y - p1.y, 2));
-
-    float t = ((pt.x - p1.x) * dx + (pt.y - p1.y) * dy) / lensq;
-    if (t < 0.0f) t = 0.0f;
-    if (t > 1.0f) t = 1.0f;
-
-    float closestX = p1.x + t * dx;
-    float closestY = p1.y + t * dy;
-    return std::sqrt(std::pow(pt.x - closestX, 2) + std::pow(pt.y - closestY, 2));
+    m_stateTransitionTimer = 0.0f;
+    m_isDragging = false;
 }
 
 SceneName GameScene::Update() {
     // 全ステージクリア済みの場合は更新しない
-    if (m_currentStageIndex >= (int)m_stages.size()) {
-        if (CheckHitKey(KEY_INPUT_R)) { // Rキーで最初からリトライ
-            m_currentStageIndex = 0;
-            Initialize();
-        }
+    if (m_currentStageIndex >= (int)m_stages.size() || m_currentStage == nullptr) {
         return SceneName::None;
     }
 
-    if (m_target != nullptr && !m_target->IsHit()) m_target->ResetHitState();
-    if (m_laser != nullptr)  m_laser->Update();
+    int mouseX, mouseY;
+    GetMousePoint(&mouseX, &mouseY);
+    m_dragCurrentPos = VGet((float)mouseX, (float)mouseY, 0.0f);
 
-    // -----------------------------------------------------------------
-    // 状態①：プレイ中の更新処理
-    // -----------------------------------------------------------------
+    static int prevMouseInput = 0;
+    int mouseInput = GetMouseInput();
+ 
     if (m_state == GameState::Playing) {
+        // 💡 1. 鏡の回転や削除などの重い処理はすべて Stage に丸投げ！
+        m_currentStage->Update(m_dragCurrentPos, mouseInput, prevMouseInput);
 
-        // （既存のマウスによる鏡の設置・個別削除処理をここにそのまま入れる）
-        int mouseX, mouseY;
-        GetMousePoint(&mouseX, &mouseY);
-        m_dragCurrentPos = VGet((float)mouseX, (float)mouseY, 0.0f);
-        static int prevMouseInput = 0;
-        int mouseInput = GetMouseInput();
-
-        if (mouseInput & MOUSE_INPUT_LEFT) {
-            if (!m_isDragging && m_mirrors.size() < (size_t)m_maxMirrors) {
+        // 💡 2. 鏡の新規設置（ドラッグ）処理
+        // 残り枚数に余裕があるときだけドラッグを許可する
+        if (m_currentStage->GetRemainingMirrors() > 0) {
+            if ((mouseInput & MOUSE_INPUT_LEFT) && !(prevMouseInput & MOUSE_INPUT_LEFT)) {
                 m_isDragging = true;
                 m_dragStartPos = m_dragCurrentPos;
             }
         }
-        else {
-            if (m_isDragging) {
+
+        if (m_isDragging) {
+            if (!(mouseInput & MOUSE_INPUT_LEFT)) {
                 m_isDragging = false;
-                float dx = m_dragCurrentPos.x - m_dragStartPos.x;
-                float dy = m_dragCurrentPos.y - m_dragStartPos.y;
-                if ((dx * dx + dy * dy) > 100.0f && m_mirrors.size() < (size_t)m_maxMirrors) {
-                    m_mirrors.push_back(Mirror(m_dragStartPos, m_dragCurrentPos));
-                    if (m_laser != nullptr) m_laser->Reset();
+
+                // 💡 マウスを離したら、現在のステージに鏡を追加する！
+                if (m_currentStage != nullptr) {
+                    m_currentStage->AddMirror(m_dragStartPos, m_dragCurrentPos);
+                    m_clearTimer = 0; // 鏡が増えた瞬間も開通タイマーをリセット
                 }
             }
         }
-
-        if ((mouseInput & MOUSE_INPUT_RIGHT) && !(prevMouseInput & MOUSE_INPUT_RIGHT)) {
-            int targetIndex = -1;
-            float minDistance = 999999.0f;
-            for (int i = 0; i < (int)m_mirrors.size(); ++i) {
-                float dist = GetDistanceLineToPoint(m_mirrors[i].GetStart(), m_mirrors[i].GetEnd(), m_dragCurrentPos);
-                if (dist < 12.0f && dist < minDistance) { minDistance = dist; targetIndex = i; }
-            }
-            if (targetIndex != -1) {
-                m_mirrors.erase(m_mirrors.begin() + targetIndex);
-                if (m_laser != nullptr) m_laser->Reset();
-            }
-        }
-        prevMouseInput = mouseInput;
-
-        // ★【新規】クリア判定チェック
-        // レーザーのDrawが走った後に的の IsHit() を見たいので、
-        // このUpdateの最後、またはDrawの直後で判定します（DxLibの標準的な流れに合わせます）
-        if (m_target != nullptr && m_target->IsHit()) {
-            m_clearTimer++;
-            if (m_clearTimer >= 30) { // 30フレーム（約0.5秒）当て続けたらクリア！
-                m_state = GameState::Clear;
-                m_isDragging = false; // ドラッグ中なら強制解除
-            }
-        }
-        else {
-            m_clearTimer = 0; // 外れたらタイマーリセット
-        }
     }
-    // -----------------------------------------------------------------
-    // 状態②：クリア演出中の更新処理
-    // -----------------------------------------------------------------
     else if (m_state == GameState::Clear) {
-        m_stateTransitionTimer++;
-
-        // クリアして90フレーム（約1.5秒）経ったら次のステージへ
-        if (m_stateTransitionTimer >= 90) {
+        // クリア演出タイマー
+        m_stateTransitionTimer += 1.0f / 60.0f;
+        if (m_stateTransitionTimer >= 2.0f) { // 2秒経ったら次へ
             m_currentStageIndex++;
             if (m_currentStageIndex < (int)m_stages.size()) {
-                LoadStage(m_currentStageIndex); // 次のステージへ
+                LoadStage(m_currentStageIndex);
             }
         }
     }
 
-    // デバッグ用ステージ切り替えはプレイ中のみ有効にする
-    if (m_state == GameState::Playing) {
-        if (CheckHitKey(KEY_INPUT_1)) { m_currentStageIndex = 0; LoadStage(0); }
-        if (CheckHitKey(KEY_INPUT_2)) { m_currentStageIndex = 1; LoadStage(1); }
-    }
-
+    prevMouseInput = mouseInput;
     return SceneName::None;
 }
 
 void GameScene::Draw() {
-    // ---- エンディング画面（全ステージクリア時） ----
-    if (m_currentStageIndex >= (int)m_stages.size()) {
-        DrawString(200, 200, "🎉 ALL STAGE CLEAR !!! 🎉", GetColor(255, 255, 0));
-        DrawString(180, 250, "おめでとうございます！天才レーザーパズラー誕生です！", GetColor(255, 255, 255));
-        DrawString(230, 320, "【R】キーを押すと最初から遊べます", GetColor(150, 150, 150));
-        return;
+    if (m_currentStage == nullptr) return;
+
+    // 💡 1. ステージオブジェクトとレーザーの描画（ここで最新のIsHit判定が走る）
+    m_currentStage->Draw(m_isDragging, m_dragStartPos, m_dragCurrentPos);
+
+    // 💡 2. 【超重要】描画が終わった直後の、最も新鮮なフラグでクリア判定を行う！
+    // (※的オブジェクトに直接触る代わりに、的の状態を反映した結果を判定します。
+    // 本来は m_currentStage 内の判定用ゲッターを呼ぶか、Stage::Drawの戻り値にするのが綺麗です)
+
+    // --- GameScene.cpp の Draw() 内のクリア判定部分 ---
+    if (m_state == GameState::Playing) {
+        // 💡 Stageクラス経由で的がヒットしているか確認する
+        if (m_currentStage != nullptr && m_currentStage->IsTargetHit()) {
+            m_clearTimer++;
+            if (m_clearTimer >= 30) {
+                m_state = GameState::Clear;
+                m_isDragging = false;
+            }
+        }
+        else {
+            m_clearTimer = 0;
+        }
     }
 
-    // UI描画
-    char stageBuf[32];
-    sprintf_s(stageBuf, "--- STAGE %d ---", m_currentStageIndex + 1);
-    DrawString(10, 10, stageBuf, GetColor(255, 255, 0));
-    DrawString(10, 30, "【操作】左ドラッグ：設置 / 鏡の上で右クリック：消去", GetColor(150, 150, 150));
+    // UIの描画
+    char buf[128];
+    sprintf_s(buf, "STAGE %d / %d", m_currentStageIndex + 1, (int)m_stages.size());
+    DrawString(10, 10, buf, GetColor(255, 255, 255));
 
-    int remaining = m_maxMirrors - (int)m_mirrors.size();
+    int remaining = m_currentStage->GetRemainingMirrors();
     unsigned int uiColor = (remaining > 0) ? GetColor(255, 255, 255) : GetColor(255, 100, 100);
-    char buf[64];
-    sprintf_s(buf, "手持ちの鏡：あと %d 枚 / %d 枚", remaining, m_maxMirrors);
-    DrawString(10, 60, buf, uiColor);
+    sprintf_s(buf, "手持ちの鏡：あと %d 枚 / %d 枚", remaining, m_currentStage->GetMaxMirrors());
+    DrawString(10, 40, buf, uiColor);
 
-    // オブジェクト描画
-    for (auto& mirror : m_mirrors) mirror.Draw();
-    for (auto& obstacle : m_obstacles) obstacle.Draw();
-    if (m_isDragging) DrawLine((int)m_dragStartPos.x, (int)m_dragStartPos.y, (int)m_dragCurrentPos.x, (int)m_dragCurrentPos.y, GetColor(255, 255, 0), 2);
-
-    // レーザーと的の描画（これによって当たり判定のフラグが内部で立ちます）
-    if (m_laser != nullptr && m_target != nullptr) m_laser->Draw(m_mirrors, m_obstacles, *m_target);
-    if (m_target != nullptr) m_target->Draw();
-
-    // ★【新規】ステージクリア時の画面エフェクト表示
+    // ステージクリア時の画面エフェクト
     if (m_state == GameState::Clear) {
-        // 画面中央に大きな文字を表示
-        DrawString(250, 200, "STAGE CLEAR!!", GetColor(0, 255, 255));
-
-        // ちょっとした演出：画面全体をふんわり白くする（フェードアウト風）
-        // タイマーが進むほど白が濃くなる
-        int alpha = m_stateTransitionTimer * 2;
-        if (alpha > 150) alpha = 150;
-        SetDrawBlendMode(DX_BLENDMODE_ALPHA, alpha);
-        DrawBox(0, 0, 640, 480, GetColor(255, 255, 255), TRUE);
-        SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを戻す
+        DrawBox(0, 250, 800, 350, GetColor(0, 0, 0), TRUE);
+        DrawString(340, 285, "STAGE CLEAR !!", GetColor(255, 255, 0));
     }
 }

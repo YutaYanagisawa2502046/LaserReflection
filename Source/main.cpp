@@ -1,14 +1,13 @@
 #include "DxLib.h"
 #include "SceneManager.h"
-
+#include "Utility.h"
 
 // Windowsアプリのエントリーポイント（ここからプログラムが始まります）
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 
     // ---- 1. DXライブラリの初期化前設定 ----
-
     ChangeWindowMode(TRUE);             // ウィンドウモードで起動（FALSEにするとフルスクリーン）
-    SetGraphMode(1280, 720, 32);         // 画面サイズを 640x480、カラーを32bitに設定
+    SetGraphMode(Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, 32);         // 画面サイズを 640x480、カラーを32bitに設定
     SetMainWindowText("レーザー反射ゲーム"); // ウィンドウのタイトルバーのテキストを設定
 
     // ---- 2. DXライブラリの初期化 ----

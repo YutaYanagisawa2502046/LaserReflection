@@ -141,9 +141,11 @@
     <ClCompile Include="Source\main.cpp" />
     <ClCompile Include="Source\Mirror.cpp" />
     <ClCompile Include="Source\SceneManager.cpp" />
+    <ClCompile Include="Source\Stage.cpp" />
     <ClCompile Include="Source\TitleScene.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="Source\Filter.h" />
     <ClInclude Include="Source\GameScene.h" />
     <ClInclude Include="Source\Laser.h" />
     <ClInclude Include="Source\LaserTarget.h" />
@@ -151,6 +153,7 @@
     <ClInclude Include="Source\Obstacle.h" />
     <ClInclude Include="Source\Scene.h" />
     <ClInclude Include="Source\SceneManager.h" />
+    <ClInclude Include="Source\Stage.h" />
     <ClInclude Include="Source\TitleScene.h" />
     <ClInclude Include="Source\Utility.h" />
   </ItemGroup>

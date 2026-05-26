@@ -7,6 +7,10 @@ private:
     VECTOR m_end;    // 反射板の終点座標 (x, y)
     VECTOR m_normal; // 反射板の面法線ベクトル（垂直な方向、向きを決定する）
 
+    bool m_isSelected;
+    bool m_isChange;
+    float m_angle;
+
     // 始点と終点から法線ベクトルを自動計算する内部関数
     void CalculateNormal();
 
@@ -16,6 +20,12 @@ public:
     ~Mirror() {}
 
     void Draw();     // 反射板を描画する
+    void Update();
+
+    void SetSelect(bool flag) { m_isSelected = flag; }
+    bool GetSelect() const { return m_isSelected; }
+
+    bool GetIsChange() const { return m_isChange; }
 
     // 外部から座標や法線を取得するための関数（ゲッター）
     VECTOR GetStart()  const { return m_start; }
