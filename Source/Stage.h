@@ -11,7 +11,7 @@
 struct StageData {
 	VECTOR laserPos;
 	VECTOR laserDir;
-	LaserColor initalColor;
+	LaserColor initialColor;
 	VECTOR targetPos;
 	float targetRadius;
 	int maxMirrors;
@@ -19,8 +19,8 @@ struct StageData {
 	std::vector<Obstacle> obstacles;
 	std::vector<Filter> filters; // Åöí«â¡
 
-	StageData(const VECTOR& laserPos, const VECTOR& laserDir, const LaserColor& initalColor, const VECTOR& targetPos, float targetRadius, int maxMirrors, const LaserColor& requiredColor, const std::vector<Obstacle>& obstacles, const std::vector<Filter>& filters)
-		: laserPos(laserPos), laserDir(laserDir), initalColor(initalColor), targetPos(targetPos), targetRadius(targetRadius), maxMirrors(maxMirrors), requiredColor(requiredColor), obstacles(obstacles), filters(filters)
+	StageData(const VECTOR& laserPos, const VECTOR& laserDir, const LaserColor& initialColor, const VECTOR& targetPos, float targetRadius, int maxMirrors, const LaserColor& requiredColor, const std::vector<Obstacle>& obstacles, const std::vector<Filter>& filters)
+		: laserPos(laserPos), laserDir(laserDir), initialColor(initialColor), targetPos(targetPos), targetRadius(targetRadius), maxMirrors(maxMirrors), requiredColor(requiredColor), obstacles(obstacles), filters(filters)
 	{
 	}StageData() = default;
 

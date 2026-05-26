@@ -33,7 +33,7 @@ Stage::Stage(const StageData& data)
     , m_maxMirrors(data.maxMirrors)
     , m_clearTimer(0)
 {
-    m_laser = new Laser(data.laserPos, data.laserDir, data.initalColor);
+    m_laser = new Laser(data.laserPos, data.laserDir, data.initialColor);
     m_target = new LaserTarget(data.targetPos, data.targetRadius, data.requiredColor);
     m_obstacles = data.obstacles;
     m_filters = data.filters;

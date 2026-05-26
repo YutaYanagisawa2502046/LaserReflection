@@ -61,11 +61,21 @@ void GameScene::Initialize() {
                 }
             }
             else if (token == "LASER") {
-                std::string x, y, dx, dy;
+                std::string x, y, dx, dy, colorStr;
                 std::getline(ss, x, ','); std::getline(ss, y, ',');
                 std::getline(ss, dx, ','); std::getline(ss, dy, ',');
+                std::getline(ss, colorStr, ','); // 💡 5つ目の要素（色）を取得
+
                 currentStage.laserPos = VGet(std::stof(x), std::stof(y), 0.0f);
                 currentStage.laserDir = VGet(std::stof(dx), std::stof(dy), 0.0f);
+
+                // 💡 色が指定されていれば読み込み、なければデフォルトで赤(0)にする安全設計
+                if (!colorStr.empty()) {
+                    currentStage.initialColor = static_cast<LaserColor>(std::stoi(colorStr));
+                }
+                else {
+                    currentStage.initialColor = LaserColor::Red;
+                }
             }
             else if (token == "TARGET") {
                 std::string x, y, radius, colorStr;

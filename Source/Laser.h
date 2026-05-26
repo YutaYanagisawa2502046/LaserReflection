@@ -11,13 +11,14 @@ class Filter;
 struct RayHistory {
     VECTOR position;  // 反射した位置（始点）
     VECTOR direction; // そのときの進行方向
-    LaserColor initalColor;
+    
 };
 
 class Laser {
 private:
     VECTOR m_position;
     VECTOR m_direction;
+    LaserColor m_initalColor;
     int m_maxReflections;
 
     float m_currentLength;

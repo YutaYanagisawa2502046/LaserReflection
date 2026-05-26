@@ -12,7 +12,7 @@ float GetDistanceSq(VECTOR p1, VECTOR p2) {
 
 Laser::Laser(VECTOR position, VECTOR direction, LaserColor initalColor, int maxReflections, float growSpeed)
 	: m_position(position), m_direction(direction), m_maxReflections(maxReflections)
-	, m_growSpeed(growSpeed), m_currentLength(0.0f), m_isLooping(false) {
+	, m_growSpeed(growSpeed), m_currentLength(0.0f), m_isLooping(false), m_initalColor(initalColor){
 
 	float len = std::sqrtf(m_direction.x * m_direction.x + m_direction.y * m_direction.y);
 	if (len > 0.0f) {
@@ -110,7 +110,7 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 	VECTOR currentDir = m_direction;
 	float remainingLength = m_currentLength; // 最大射程
 
-	LaserColor currentLaserColor = LaserColor::Red;
+	LaserColor currentLaserColor = m_initalColor;
 	bool hasFilter = !filters.empty();
 
 	for (int i = 0; i < 200; ++i) {
@@ -193,7 +193,7 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 		// ----------------------------------------------------
 		// 5. レーザーの描画処理
 		// ----------------------------------------------------
-		unsigned int drawColor = (currentLaserColor == LaserColor::Red) ? GetColor(255, 50, 50) : ((currentLaserColor == LaserColor::Green) ? GetColor(50, 255, 50) : GetColor(50, 50, 255));
+		unsigned int drawColor = GetColor(255, 50, 50);
 		if (currentLaserColor == LaserColor::Green)
 			drawColor = GetColor(50, 255, 50);
 		else if (currentLaserColor == LaserColor::Blue)
