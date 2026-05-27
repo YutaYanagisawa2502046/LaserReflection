@@ -124,7 +124,7 @@ void GameScene::Initialize() {
 
     }
 
-    m_currentStageIndex = 9;
+    m_currentStageIndex = 14;
     LoadStage(m_currentStageIndex);
 }
 
