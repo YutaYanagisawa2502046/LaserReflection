@@ -134,6 +134,33 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 	if (m_laser != nullptr && m_target != nullptr) {
 		// レーザーに擬似計算を走らせて的へのヒット状況を「実更新」する
 		m_laser->Draw(m_mirrors, m_obstacles, m_filters, *m_target);
+
+		// 💡 【ここがポイント！】
+		// レーザーの衝突シミュレーションが走った直後、もしレーザーが壁（Obstacle）に
+		// 遮断されて止まっている場合、その終端座標（ぶつかっている場所）を取得します。
+		// ※お使いの Laser クラスに終端座標をとる関数（例: GetEndPoint() や GetHitPosition()）
+		// がある場合、以下のようにして毎フレーム自動的に火花を生成できます。
+
+		// 【実装例】
+		//VECTOR hitPoint = m_laser->GetEndPoint();
+		//unsigned int currentLaserColor = m_laser->GetDxColor(); // 現在のレーザーの描画色
+		//if (m_laser->IsHitObstacle()) { // 壁に当たっているフラグ等があれば
+		//	SpawnEmitParticles(hitPoint, currentLaserColor);
+		//}
+	}
+
+	// 💡 【追加】パーティクルの移動と寿命更新処理
+	for (auto it = m_particles.begin(); it != m_particles.end(); ) {
+		it->pos = VAdd(it->pos, it->velocity); // 移動
+		it->velocity = VScale(it->velocity, 0.90f); // 💡 減速（空気抵抗で上品に）
+		it->life -= 1.f / 60.f;
+
+		if (it->life <= 0) {
+			it = m_particles.erase(it); // 寿命で消滅
+		}
+		else {
+			++it;
+		}
 	}
 
 	return false;

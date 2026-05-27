@@ -19,13 +19,13 @@ Laser::Laser(VECTOR position, VECTOR direction, LaserColor initalColor, int maxR
 		float tmp = 1.f / len;
 		m_direction.x *= tmp;
 		m_direction.y *= tmp;
-
 	}
 }
 
 void Laser::Reset() {
 	m_currentLength = 0.0f;
 	m_isLooping = false;     // ループフラグもリセット
+	m_history.clear();
 }
 
 void Laser::Update() {
@@ -108,12 +108,13 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 {
 	VECTOR currentStart = m_position;
 	VECTOR currentDir = m_direction;
-	float remainingLength = m_currentLength; // 最大射程
+	float remainingLength = m_currentLength;
 
 	LaserColor currentLaserColor = m_initalColor;
 	bool hasFilter = !filters.empty();
 
-	for (int i = 0; i < 200; ++i) {
+	RayHistory History = RayHistory();
+	for (int i = 0; i < m_maxReflections; ++i) {
 		if (remainingLength <= 0.0f) break;
 
 		VECTOR currentEnd;
@@ -218,13 +219,25 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 			currentDir.y = currentDir.y - 2.0f * dotProduct * N.y;
 
 			float len = std::sqrtf(currentDir.x * currentDir.x + currentDir.y * currentDir.y);
-			if (len > 0.0f) { currentDir.x /= len; currentDir.y /= len; }
+			if (len > 0.0f) { float tmp = 1.f / len; currentDir.x *= tmp; currentDir.y *= tmp; }
+			History.position = currentStart;
+			History.direction = currentDir;
+			History.Color = currentLaserColor;
+			m_history.emplace_back(History);
 		}
 		else if (closestFilter != nullptr) {
 			currentStart = closestPoint;
 			currentLaserColor = closestFilter->GetLaserColor();
+			History.Color = currentLaserColor;
+			History.position = currentEnd;
+			History.direction = currentDir;
+			m_history.emplace_back(History);
 		}
 		else if (closestObstacle != nullptr) {
+			History.position = closestPoint;
+			History.direction = currentDir;
+			History.Color = currentLaserColor;
+			m_history.emplace_back(History);
 			break;
 		}
 		else {

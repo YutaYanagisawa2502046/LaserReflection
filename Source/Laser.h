@@ -11,7 +11,9 @@ class Filter;
 struct RayHistory {
     VECTOR position;  // 反射した位置（始点）
     VECTOR direction; // そのときの進行方向
-    
+    LaserColor Color;
+
+    RayHistory() = default;
 };
 
 class Laser {
@@ -20,6 +22,8 @@ private:
     VECTOR m_direction;
     LaserColor m_initalColor;
     int m_maxReflections;
+
+    bool m_isHitObstacle;
 
     float m_currentLength;
     float m_growSpeed;
@@ -43,4 +47,7 @@ public:
     void Reset();
     void Update();
     void Draw(const std::vector<Mirror>& mirrors, const std::vector<Obstacle>& obstacles, const std::vector<Filter>& filters, LaserTarget& target);
+
+    VECTOR GetEndPoint() const { return m_history.back().position; }
+    bool IsHitObstacle() const { return m_isHitObstacle; }
 };
