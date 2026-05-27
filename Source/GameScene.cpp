@@ -107,10 +107,15 @@ void GameScene::Initialize() {
                 std::getline(ss, x1, ','); std::getline(ss, y1, ',');
                 std::getline(ss, x2, ','); std::getline(ss, y2, ',');
                 std::getline(ss, colorStr, ',');
+
+                LaserColor filterColor = LaserColor::Red; // デフォルト安全値
+                if (!colorStr.empty()) {
+                    filterColor = static_cast<LaserColor>(std::stoi(colorStr));
+                }
                 currentStage.filters.push_back(Filter(
                     VGet(std::stof(x1), std::stof(y1), 0.0f),
                     VGet(std::stof(x2), std::stof(y2), 0.0f),
-                    static_cast<LaserColor>(std::stoi(colorStr))
+                    static_cast<LaserColor>(filterColor)
                 ));
             }
         }
@@ -119,7 +124,7 @@ void GameScene::Initialize() {
 
     }
 
-    m_currentStageIndex = 4;
+    m_currentStageIndex = 9;
     LoadStage(m_currentStageIndex);
 }
 
