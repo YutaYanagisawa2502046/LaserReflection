@@ -4,6 +4,7 @@
 #include <string>
 #include <fstream>  // 💡 追加：ファイル入力用
 #include <sstream>  // 💡 追加：文字列解析用
+#include "Utility.h"
 
 GameScene::GameScene()
     : m_currentStage(nullptr)
@@ -118,7 +119,7 @@ void GameScene::Initialize() {
 
     }
 
-    m_currentStageIndex = 0;
+    m_currentStageIndex = 4;
     LoadStage(m_currentStageIndex);
 }
 
@@ -180,7 +181,7 @@ SceneName GameScene::Update() {
     }
     else if (m_state == GameState::Clear) {
         // クリア演出タイマー
-        m_stateTransitionTimer += 1.0f / 60.0f;
+        m_stateTransitionTimer += 1.f / 60.f;
         if (m_stateTransitionTimer >= 2.0f) { // 2秒経ったら次へ
             m_currentStageIndex++;
             if (m_currentStageIndex < (int)m_stages.size()) {
@@ -230,6 +231,10 @@ void GameScene::Draw() {
 
     // ステージクリア時の画面エフェクト
     if (m_state == GameState::Clear) {
+        int alpha = static_cast<int>(200.f * m_stateTransitionTimer);
+        SetDrawBlendMode(DX_BLENDMODE_ALPHA, min(alpha, 200));
+        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(255, 255, 255), TRUE);
+        SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
         DrawBox(0, 250, 800, 350, GetColor(0, 0, 0), TRUE);
         DrawString(340, 285, "STAGE CLEAR !!", GetColor(255, 255, 0));
     }

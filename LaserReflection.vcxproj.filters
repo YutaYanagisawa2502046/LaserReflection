@@ -75,4 +75,7 @@
       <Filter>ヘッダー ファイル</Filter>
     </ClInclude>
   </ItemGroup>
+  <ItemGroup>
+    <Text Include="Stage\StageData.txt" />
+  </ItemGroup>
 </Project>

@@ -20,14 +20,25 @@ void LaserTarget::SetHit(LaserColor laserColor, bool hasFilter)
 }
 
 
-void LaserTarget::Draw() {
+void LaserTarget::Draw(bool hasFilter) {
 	int x = (int)m_position.x;
 	int y = (int)m_position.y;
 	int r = (int)m_radius;
 
 	// ベースとなる的の色（要求されている色）
-	unsigned int baseColor = (m_requiredColor == LaserColor::Red) ? GetColor(150, 0, 0) : (m_requiredColor == LaserColor::Green) ? GetColor(0, 150, 0) : GetColor(0, 0, 150);
-	unsigned int brightColor = (m_requiredColor == LaserColor::Red) ? GetColor(255, 255, 0) : (m_requiredColor == LaserColor::Green) ? GetColor(255, 0, 255) : GetColor(0, 255, 255);
+	unsigned int baseColor = GetColor(150, 0, 0);
+	unsigned int brightColor = GetColor(255, 255, 0);
+
+	if (m_requiredColor == LaserColor::Green)
+	{
+		baseColor = GetColor(0, 150, 0);
+		brightColor = GetColor(255, 0, 255);
+	}
+	else if (m_requiredColor == LaserColor::Blue)
+	{
+		baseColor = GetColor(0, 0, 150);
+		brightColor = GetColor(0, 255, 255);
+	}
 
 	if (m_isHit) {
 		// 光っている状態（要求通りの色で起動した！）
@@ -43,15 +54,16 @@ void LaserTarget::Draw() {
 		DrawCircle(x, y, r - 8, GetColor(255, 255, 255), FALSE);
 		DrawCircle(x, y, 4, GetColor(255, 255, 255), TRUE);
 
-		// デバッグ用兼親切心：要求色を文字で小さく書いておく
-		if (m_requiredColor == LaserColor::Blue) {
-			DrawString(x - 12, y + r + 5, "NEED BLUE", GetColor(100, 100, 255));
-		}
-		else if (m_requiredColor == LaserColor::Green) {
-			DrawString(x - 12, y + r + 5, "NEED GREEN", GetColor(100, 255, 100));
-		}
-		else if (m_requiredColor == LaserColor::Red) {
-			DrawString(x - 12, y + r + 5, "NEED RED", GetColor(255, 100, 100));
-		}
+		if (hasFilter)
+			// デバッグ用兼親切心：要求色を文字で小さく書いておく
+			if (m_requiredColor == LaserColor::Blue) {
+				DrawString(x - 12, y + r + 5, "NEED BLUE", GetColor(100, 100, 255));
+			}
+			else if (m_requiredColor == LaserColor::Green) {
+				DrawString(x - 12, y + r + 5, "NEED GREEN", GetColor(100, 255, 100));
+			}
+			else if (m_requiredColor == LaserColor::Red) {
+				DrawString(x - 12, y + r + 5, "NEED RED", GetColor(255, 100, 100));
+			}
 	}
 }
