@@ -149,7 +149,7 @@ void GameScene::LoadStage(int index) {
         m_currentStage = new Stage(m_stages[index]);
     }
 
-    m_state = GameState::Playing;
+    m_state = GameState::FadeIn;
     m_clearTimer = 0;
     m_stateTransitionTimer = 0.0f;
     m_isDragging = false;
@@ -244,7 +244,7 @@ SceneName GameScene::Update() {
     // ----------------================================================-
     else if (m_state == GameState::FadeIn) {
         // タイマーを 1.0f から 0.0f に向かって減算していく
-        m_stateTransitionTimer -= 1.0f / 30.0f; // 約0.5秒かけてじわっと戻る
+        m_stateTransitionTimer -= 1.0f / 60.0f; // 約0.5秒かけてじわっと戻る
 
         // 完全に不透明度が 0 以下になったら、通常プレイ状態へ移行
         if (m_stateTransitionTimer <= 0.0f) {
@@ -343,19 +343,21 @@ void GameScene::Draw() {
         DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2, Ut::SCREEN_HEIGHT / 2 - 15, str.c_str(), colorUiAccent, m_fontUiMain);
     }
 
-    // [B] ✨ フェードアウト（Clear）とフェードイン（FadeIn）の画面マスク
+    // [B] ✨ 【目に優しい版】フェードアウト（Clear）とフェードイン（FadeIn）の画面マスク
     if (m_state == GameState::Clear || m_state == GameState::FadeIn) {
-        // m_stateTransitionTimer は Clear の時は 0➔1、FadeIn の時は 1➔0 に変化します
         float alpha = 255.0f * m_stateTransitionTimer;
 
-        // 安全のために 0 〜 255 の範囲にクランプ
         int alphaInt = static_cast<int>(alpha);
         if (alphaInt < 0) alphaInt = 0;
         if (alphaInt > 255) alphaInt = 255;
 
-        // 💡 アルファブレンドで画面全体を覆う（タイトル等と合わせたオフホワイト）
+        // 💡 変更ポイント：RGBを低く抑えた高級感のあるディープネイビー（または黒に近いグレー）
+        // これなら画面が暗転する方向でフェードするため、目が一切疲れません！
+        unsigned int colorFadeMask = GetColor(15, 20, 28);
+
+        // アルファブレンドで画面全体を優しく包み込む
         SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaInt);
-        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(235, 240, 245), TRUE);
+        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, colorFadeMask, TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
     }
 }
