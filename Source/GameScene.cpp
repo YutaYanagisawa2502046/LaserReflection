@@ -156,55 +156,104 @@ void GameScene::LoadStage(int index) {
 }
 
 SceneName GameScene::Update() {
-    // 全ステージクリア済みの場合は更新しない
+    // 💡 1. 全ステージクリア時は、Rキーで最初からリトライできるようにする
     if (m_currentStageIndex >= (int)m_stages.size() || m_currentStage == nullptr) {
+        if (CheckHitKey(KEY_INPUT_R)) {
+            Initialize(); // 最初からやり直し
+        }
         return SceneName::None;
     }
 
+    // マウス入力情報の取得（Ut:: 等、お使いの環境に合わせて適宜調整してください）
+    int mouseInput = GetMouseInput();
     int mouseX, mouseY;
     GetMousePoint(&mouseX, &mouseY);
-    m_dragCurrentPos = VGet((float)mouseX, (float)mouseY, 0.0f);
+    VECTOR mousePos = VGet(static_cast<float>(mouseX), static_cast<float>(mouseY), 0.0f);
 
+    // 前フレームの入力（静的変数などで保持）
     static int prevMouseInput = 0;
-    int mouseInput = GetMouseInput();
- 
-    if (m_state == GameState::Playing) {
-        // 💡 1. 鏡の回転や削除などの重い処理はすべて Stage に丸投げ！
-        m_currentStage->Update(m_dragCurrentPos, mouseInput, prevMouseInput);
 
-        // 💡 2. 鏡の新規設置（ドラッグ）処理
-        // 残り枚数に余裕があるときだけドラッグを許可する
-        if (m_currentStage->GetRemainingMirrors() > 0) {
-            if ((mouseInput & MOUSE_INPUT_LEFT) && !(prevMouseInput & MOUSE_INPUT_LEFT)) {
-                m_isDragging = true;
-                m_dragStartPos = m_dragCurrentPos;
-            }
+    // ----------------================================================-
+    // 🎮 状態 [A] : 通常プレイ中 (Playing)
+    // ----------------================================================-
+    if (m_state == GameState::Playing) {
+
+        // 💡 ドラッグによる鏡の新規配置処理
+        if ((mouseInput & MOUSE_INPUT_LEFT) && !(prevMouseInput & MOUSE_INPUT_LEFT)) {
+            m_isDragging = true;
+            m_dragStartPos = mousePos;
+            m_dragCurrentPos = mousePos;
+        }
+        else if (m_isDragging && (mouseInput & MOUSE_INPUT_LEFT)) {
+            m_dragCurrentPos = mousePos;
+        }
+        else if (m_isDragging && !(mouseInput & MOUSE_INPUT_LEFT)) {
+            m_isDragging = false;
+            // ドラッグ終了時にステージに鏡を追加
+            m_currentStage->AddMirror(m_dragStartPos, m_dragCurrentPos);
         }
 
-        if (m_isDragging) {
-            if (!(mouseInput & MOUSE_INPUT_LEFT)) {
-                m_isDragging = false;
+        // 💡 ステージ全体の更新（鏡の選択・回転・右クリック削除など）
+        m_currentStage->Update(mousePos, mouseInput, prevMouseInput);
 
-                // 💡 マウスを離したら、現在のステージに鏡を追加する！
+        // 💡 【超重要】的へのヒット判定とクリアタイマーのカウント
+        if (m_currentStage->IsTargetHit()) {
+            m_clearTimer++;
+            if (m_clearTimer >= 30) {
+                m_state = GameState::Clear;
+                m_stateTransitionTimer = 0.0f; // 0.0f（透明）からスタート
+            }
+        }
+        else {
+            m_clearTimer = 0;
+        }
+
+        // デバッグ用の強制ステージスキップ（数字の「3」キーで次へ）
+        if (CheckHitKey(KEY_INPUT_3)) {
+            m_state = GameState::Clear;
+            m_stateTransitionTimer = 0.0f;
+        }
+    }
+    // ----------------================================================-
+    // 🌟 状態 [B] : ステージクリア演出中 (Clear)
+    // ----------------================================================-
+    else if (m_state == GameState::Clear) {
+        m_isDragging = false;
+        m_stateTransitionTimer += 1.0f / 30.0f; // 💡 約0.5秒でフェードアウト（少し速くしました）
+
+        if (m_stateTransitionTimer >= 1.0f) {
+            m_currentStageIndex++; // 次のステージへ
+
+            if (m_currentStageIndex < (int)m_stages.size()) {
+                LoadStage(m_currentStageIndex); // ステージ読み込み
+
+                // 💡 【重要】ここを Playing ではなく FadeIn にする！
+                m_state = GameState::FadeIn;
+                m_stateTransitionTimer = 1.0f; // 1.0f（真っ白）からスタート
+            }
+            else {
                 if (m_currentStage != nullptr) {
-                    m_currentStage->AddMirror(m_dragStartPos, m_dragCurrentPos);
-                    m_clearTimer = 0; // 鏡が増えた瞬間も開通タイマーをリセット
+                    delete m_currentStage;
+                    m_currentStage = nullptr;
                 }
             }
         }
     }
-    else if (m_state == GameState::Clear) {
-        // クリア演出タイマー
-        m_stateTransitionTimer += 1.f / 60.f;
-        if (m_stateTransitionTimer >= 2.0f) { // 2秒経ったら次へ
-            m_currentStageIndex++;
-            if (m_currentStageIndex < (int)m_stages.size()) {
-                LoadStage(m_currentStageIndex);
-            }
+    // ----------------================================================-
+    // ✨ 状態 [C] : 新ステージ開始➔フェードイン中 (FadeIn)
+    // ----------------================================================-
+    else if (m_state == GameState::FadeIn) {
+        // タイマーを 1.0f から 0.0f に向かって減算していく
+        m_stateTransitionTimer -= 1.0f / 30.0f; // 約0.5秒かけてじわっと戻る
+
+        // 完全に不透明度が 0 以下になったら、通常プレイ状態へ移行
+        if (m_stateTransitionTimer <= 0.0f) {
+            m_stateTransitionTimer = 0.0f;
+            m_state = GameState::Playing;
         }
     }
 
-    prevMouseInput = mouseInput;
+    prevMouseInput = mouseInput; // マウス状態の保存
     return SceneName::None;
 }
 
@@ -271,7 +320,7 @@ void GameScene::Draw() {
     DrawStringToHandle(leftX, footerY, "[ CONTROLS ]", colorUiAccent, m_fontUiSub);
     DrawStringToHandle(leftX, footerY + 22, "Left Drag       : Place Mirror", colorUiGray, m_fontUiSub);
     DrawStringToHandle(leftX, footerY + 42, "Right Click     : Remove Mirror", colorUiGray, m_fontUiSub);
-    DrawStringToHandle(leftX, footerY + 62, "Mouse Wheel     : Rotate Mirror ( 5° / +Shift: 1° )", colorUiWhite, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 62, "Mouse Wheel     : Rotate Mirror ( 1° / +Shift: 0.1° )", colorUiWhite, m_fontUiSub);
 
     // 【右側カラム：パズルのルール】
     // 画面中央（Widthの半分）より少し右からスタートして綺麗にセパレート
@@ -282,26 +331,30 @@ void GameScene::Draw() {
     DrawStringToHandle(rightX, footerY + 62, "- Hold the light on the target for 0.5s to clear.", colorUiGray, m_fontUiSub);
 
 
-    // =================================================================
-    // 🌟 4. ステージクリア演出（中央にじんわり浮かび上がるモダンエフェクト）
-    // =================================================================
+    // [A] クリア時の文字エフェクト（Clearのときだけ帯を出す）
     if (m_state == GameState::Clear) {
         std::string str = "STAGE CLEAR";
         int SizeX = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
 
-        // 文字の背後にうっすら半透明のダーク帯を敷いて視認性を上げる
         SetDrawBlendMode(DX_BLENDMODE_ALPHA, 180);
         DrawBox(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(15, 20, 25), TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
-        // 中央にシアンの細文字が浮かび上がる
-        DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2,
-            Ut::SCREEN_HEIGHT / 2 - 15,
-            str.c_str(), colorUiAccent, m_fontUiMain);
+        DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2, Ut::SCREEN_HEIGHT / 2 - 15, str.c_str(), colorUiAccent, m_fontUiMain);
+    }
 
-        // 次のステージへの白いフェードアウト
+    // [B] ✨ フェードアウト（Clear）とフェードイン（FadeIn）の画面マスク
+    if (m_state == GameState::Clear || m_state == GameState::FadeIn) {
+        // m_stateTransitionTimer は Clear の時は 0➔1、FadeIn の時は 1➔0 に変化します
         float alpha = 255.0f * m_stateTransitionTimer;
-        SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(alpha));
+
+        // 安全のために 0 〜 255 の範囲にクランプ
+        int alphaInt = static_cast<int>(alpha);
+        if (alphaInt < 0) alphaInt = 0;
+        if (alphaInt > 255) alphaInt = 255;
+
+        // 💡 アルファブレンドで画面全体を覆う（タイトル等と合わせたオフホワイト）
+        SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaInt);
         DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(235, 240, 245), TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
     }

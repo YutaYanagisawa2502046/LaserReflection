@@ -10,9 +10,11 @@ private:
     Stage* m_currentStage;           // 💡 現在動いているステージの実体
     int m_currentStageIndex;         // 現在のステージ番号
 
+    // --- GameScene.h 内の GameState 定義部分 ---
     enum class GameState {
-        Playing,    // パズルプレイ中
-        Clear       // クリア演出中
+        Playing,
+        Clear,
+        FadeIn  // 💡 【追加】次のステージが始まった直後のフェードイン状態
     };
 
     GameState m_state;
