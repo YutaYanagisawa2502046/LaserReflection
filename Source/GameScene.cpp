@@ -15,6 +15,8 @@ GameScene::GameScene()
     , m_isDragging(false)
     , m_dragStartPos(VGet(0, 0, 0))
     , m_dragCurrentPos(VGet(0, 0, 0))
+    , m_fontUiMain(-1) // 💡 初期化
+    , m_fontUiSub(-1)  // 💡 初期化
 {
 }
 
@@ -22,11 +24,13 @@ GameScene::~GameScene() {
     if (m_currentStage != nullptr) {
         delete m_currentStage;
     }
+    // 💡 生成したフォントハンドルを安全に解放
+    DeleteFontToHandle(m_fontUiMain);
+    DeleteFontToHandle(m_fontUiSub);
 }
 
 void GameScene::Initialize() {
     m_stages.clear();
-
 
     {
         // 💡 1. 実行ファイルと同じフォルダにある「StageData.txt」を開く
@@ -124,7 +128,12 @@ void GameScene::Initialize() {
 
     }
 
-    m_currentStageIndex = 14;
+    // 💡 タイトル画面と完全に同じフォント・品質でUI用フォントを生成
+    const char* fontName = "Segoe UI"; // または "Yu Gothic UI"
+    m_fontUiMain = CreateFontToHandle(fontName, 26, 1, DX_FONTTYPE_ANTIALIASING);
+    m_fontUiSub = CreateFontToHandle(fontName, 14, 1, DX_FONTTYPE_ANTIALIASING);
+
+    m_currentStageIndex = 0;
     LoadStage(m_currentStageIndex);
 }
 
@@ -200,47 +209,100 @@ SceneName GameScene::Update() {
 }
 
 void GameScene::Draw() {
-    if (m_currentStage == nullptr) return;
+    // ---- エンディング画面（全ステージクリア時） ----
+    if (m_currentStageIndex >= (int)m_stages.size() || m_currentStage == nullptr) {
+        float tmp = 1.0f / 2.0f;
+        std::string Clearstr[3] = {
+            "ALL STAGE CLEAR !!!" ,
+            "おめでとうございます！天才レーザーパズラー誕生です！" ,
+            "【R】キーを押すと最初から遊べます"
+        };
 
-    // 💡 1. ステージオブジェクトとレーザーの描画（ここで最新のIsHit判定が走る）
-    m_currentStage->Draw(m_isDragging, m_dragStartPos, m_dragCurrentPos);
-
-    // 💡 2. 【超重要】描画が終わった直後の、最も新鮮なフラグでクリア判定を行う！
-    // (※的オブジェクトに直接触る代わりに、的の状態を反映した結果を判定します。
-    // 本来は m_currentStage 内の判定用ゲッターを呼ぶか、Stage::Drawの戻り値にするのが綺麗です)
-
-    // --- GameScene.cpp の Draw() 内のクリア判定部分 ---
-    if (m_state == GameState::Playing) {
-        // 💡 Stageクラス経由で的がヒットしているか確認する
-        if (m_currentStage != nullptr && m_currentStage->IsTargetHit()) {
-            m_clearTimer++;
-            if (m_clearTimer >= 30) {
-                m_state = GameState::Clear;
-                m_isDragging = false;
-            }
+        int aaa = 0;
+        for (const auto& str : Clearstr) {
+            int Width = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
+            DrawStringToHandle(static_cast<int>((Ut::SCREEN_WIDTH - Width) * tmp),
+                static_cast<int>(Ut::SCREEN_HEIGHT * tmp + (40 * aaa)),
+                str.c_str(), GetColor(235, 240, 245), m_fontUiMain);
+            aaa++;
         }
-        else {
-            m_clearTimer = 0;
-        }
+        return;
     }
 
-    // UIの描画
-    char buf[128];
-    sprintf_s(buf, "STAGE %d / %d", m_currentStageIndex + 1, (int)m_stages.size());
-    DrawString(10, 10, buf, GetColor(255, 255, 255));
+    // 🎨 モダンカラーの定義（タイトル画面の世界観を踏襲）
+    unsigned int colorUiWhite = GetColor(235, 240, 245); // メイン文字
+    unsigned int colorUiGray = GetColor(140, 150, 160); // 補助文字
+    unsigned int colorUiAccent = GetColor(160, 210, 230); // 差し色（シアン系）
+    unsigned int colorUiLine = GetColor(50, 58, 66);  // 区切り線用の極細グレー
+    unsigned int colorUiAlert = GetColor(240, 140, 140); // 警告色（鏡が0枚のとき）
 
+    // 1. ステージ内の各種オブジェクト・レーザーの描画
+    m_currentStage->Draw(m_isDragging, m_dragStartPos, m_dragCurrentPos);
+
+    // =================================================================
+    // 📊 2. 上部ヘッダーUI（現在の状況）
+    // =================================================================
+    // ステージ数表示（細線の上にスタイリッシュに配置）
+    char stageBuf[32];
+    sprintf_s(stageBuf, "STAGE  %02d  /  %02d", m_currentStageIndex + 1, (int)m_stages.size());
+    DrawStringToHandle(30, 20, stageBuf, colorUiAccent, m_fontUiMain);
+
+    // 残りの鏡枚数表示
     int remaining = m_currentStage->GetRemainingMirrors();
-    unsigned int uiColor = (remaining > 0) ? GetColor(255, 255, 255) : GetColor(255, 100, 100);
-    sprintf_s(buf, "手持ちの鏡：あと %d 枚 / %d 枚", remaining, m_currentStage->GetMaxMirrors());
-    DrawString(10, 40, buf, uiColor);
+    unsigned int mirrorTextColor = (remaining > 0) ? colorUiWhite : colorUiAlert;
+    char buf[64];
+    sprintf_s(buf, "MIRRORS  :  %d  /  %d", remaining, m_currentStage->GetMaxMirrors());
+    // 画面の右上に綺麗に整列させる（右端から200pxの位置）
+    DrawStringToHandle(Ut::SCREEN_WIDTH - 200, 26, buf, mirrorTextColor, m_fontUiSub);
 
-    // ステージクリア時の画面エフェクト
+    // 上部とゲーム画面を隔てる美しいセパレート細線
+    DrawLine(30, 60, Ut::SCREEN_WIDTH - 30, 60, colorUiLine);
+
+    // =================================================================
+    // ⌨️ 3. 下部フッターUI（常時操作説明 ＆ グリッド配置）
+    // =================================================================
+    int footerY = Ut::SCREEN_HEIGHT - 110;
+
+    // 下部を隔てるセパレート細線
+    DrawLine(30, footerY - 10, Ut::SCREEN_WIDTH - 30, footerY - 10, colorUiLine);
+
+    // 【左側カラム：操作説明】
+    int leftX = 40;
+    DrawStringToHandle(leftX, footerY, "[ CONTROLS ]", colorUiAccent, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 22, "Left Drag       : Place Mirror", colorUiGray, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 42, "Right Click     : Remove Mirror", colorUiGray, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 62, "Mouse Wheel     : Rotate Mirror ( 5° / +Shift: 1° )", colorUiWhite, m_fontUiSub);
+
+    // 【右側カラム：パズルのルール】
+    // 画面中央（Widthの半分）より少し右からスタートして綺麗にセパレート
+    int rightX = Ut::SCREEN_WIDTH / 2 + 20;
+    DrawStringToHandle(rightX, footerY, "[ SYSTEM RULES ]", colorUiAccent, m_fontUiSub);
+    DrawStringToHandle(rightX, footerY + 22, "- Pass through filters to change laser color.", colorUiGray, m_fontUiSub);
+    DrawStringToHandle(rightX, footerY + 42, "- Match the laser color with the target requirement.", colorUiGray, m_fontUiSub);
+    DrawStringToHandle(rightX, footerY + 62, "- Hold the light on the target for 0.5s to clear.", colorUiGray, m_fontUiSub);
+
+
+    // =================================================================
+    // 🌟 4. ステージクリア演出（中央にじんわり浮かび上がるモダンエフェクト）
+    // =================================================================
     if (m_state == GameState::Clear) {
-        int alpha = static_cast<int>(200.f * m_stateTransitionTimer);
-        SetDrawBlendMode(DX_BLENDMODE_ALPHA, min(alpha, 200));
-        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(255, 255, 255), TRUE);
+        std::string str = "STAGE CLEAR";
+        int SizeX = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
+
+        // 文字の背後にうっすら半透明のダーク帯を敷いて視認性を上げる
+        SetDrawBlendMode(DX_BLENDMODE_ALPHA, 180);
+        DrawBox(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(15, 20, 25), TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-        DrawBox(0, 250, 800, 350, GetColor(0, 0, 0), TRUE);
-        DrawString(340, 285, "STAGE CLEAR !!", GetColor(255, 255, 0));
+
+        // 中央にシアンの細文字が浮かび上がる
+        DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2,
+            Ut::SCREEN_HEIGHT / 2 - 15,
+            str.c_str(), colorUiAccent, m_fontUiMain);
+
+        // 次のステージへの白いフェードアウト
+        float alpha = 255.0f * m_stateTransitionTimer;
+        SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(alpha));
+        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(235, 240, 245), TRUE);
+        SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
     }
 }

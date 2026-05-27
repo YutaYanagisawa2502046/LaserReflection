@@ -24,6 +24,10 @@ private:
     VECTOR m_dragStartPos;
     VECTOR m_dragCurrentPos;
 
+    // 💡 UI用のフォントハンドルを追加
+    int m_fontUiMain;  // ステージ番号や大きなメッセージ用
+    int m_fontUiSub;   // 手持ちの鏡や操作説明の本文用
+
     void LoadStage(int index);      // 指定したインデックスのステージを読み込む
 
 public:
