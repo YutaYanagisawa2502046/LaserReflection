@@ -22,61 +22,59 @@ SceneName TitleScene::Update() {
 
 void TitleScene::Draw() {
     int originalFontSize = GetFontSize();
-    unsigned int colorRed = GetColor(255, 0, 0);
-    unsigned int colorGreen = GetColor(0, 255, 0);
-    unsigned int colorBlue = GetColor(0, 0, 255);
-    unsigned int colorCyan = GetColor(0, 255, 255);
-    unsigned int colorYellow = GetColor(255, 255, 0);
-    unsigned int colorWhite = GetColor(255, 255, 255);
 
     // ----------------================================================-
-    // 📺 1. アーケード定番の最上部スコア表示 (昭和フォント風)
+    // 🎨 1. 今時風の洗練された「サスティナブル・ミニマム」な配色
     // ----------------================================================-
-    SetFontSize(16);
-    DrawString(50, 15, "1ST SCORE", colorWhite);
-    DrawString(60, 35, "000000", colorWhite);
+    // 背景が黒ではなく、少し青み・赤みのある高級なダークグレーを想定
+    unsigned int colorMainText = GetColor(235, 240, 245); // オフホワイト（目に優しい白）
+    unsigned int colorSubText = GetColor(140, 150, 160); // シックなセメントグレー
+    unsigned int colorAccent = GetColor(160, 210, 230); // 淡いペールアクア（差し色）
+    unsigned int colorLine = GetColor(60, 70, 80);  // 極細の枠線用グレー
 
-    DrawString(350, 15, "HI-SCORE", colorRed); // ハイスコアはなぜか赤文字が多い
-    DrawString(360, 35, "099990", colorWhite);
+    // ----------------================================================-
+    // 🖼️ 2. 幾何学的なモダン・背景アクセント（薄く細い線でパズル感を演出）
+    // ----------------================================================-
+    // 画面中央に、デザインの一部として非常に細い飾り枠線を描く
+    DrawBox(40, 40, Ut::SCREEN_WIDTH - 40, Ut::SCREEN_HEIGHT - 40, colorLine, FALSE);
 
     // ----------------================================================-
-    // 🎨 2. ブラウン管の色ズレを再現した「ギラギラロゴ」
+    // ✏️ 3. スタイリッシュなタイトルロゴ（小さめ、細め、広いレタースペース風）
     // ----------------================================================-
-    SetFontSize(54); // さらにデカく！
-    std::string titleText = "LASER REFLECTION";
+    // あえてフォントサイズを「36」程度に抑え、余白の美しさを強調します
+    SetFontSize(36);
+    std::string titleText = "L A S E R   R E F L E C T I O N"; // 💡文字間にスペースを空けるのが今時！
     int titleWidth = GetDrawStringWidth(titleText.c_str(), (int)titleText.size());
-    int logoX = (Ut::SCREEN_WIDTH - titleWidth) / 2;
-    int logoY = 160;
+    DrawString((Ut::SCREEN_WIDTH - titleWidth) / 2, 180, titleText.c_str(), colorMainText);
 
-    // RGBの影をあえて大きくズラして重ねる（擬似・色にじみ効果）
-    DrawString(logoX + 4, logoY + 4, titleText.c_str(), colorRed);   // 赤のズレ
-    DrawString(logoX - 2, logoY - 2, titleText.c_str(), colorBlue);  // 青のズレ
-    DrawString(logoX, logoY, titleText.c_str(), colorCyan);  // 本体のシアン
+    // 飾り用のアンダーライン（極細の一本線）
+    DrawLine((Ut::SCREEN_WIDTH - 200) / 2, 240, (Ut::SCREEN_WIDTH + 200) / 2, 240, colorAccent);
 
-    // ----------------================================================-
-    // 🌟 3. 点滅する「INSERT COIN」ガイド
-    // ----------------================================================-
-    SetFontSize(22);
-    if ((m_flashTimer / 30) % 2 == 0) {
-        std::string coinText = "INSERT COIN / PRESS SPACE KEY";
-        int coinWidth = GetDrawStringWidth(coinText.c_str(), (int)coinText.size());
-        DrawString((Ut::SCREEN_WIDTH - coinWidth) / 2, 360, coinText.c_str(), colorYellow);
-    }
-    else {
-        // 点滅の裏側でうっすら文字のシルエットを残すのがレトロ筐体流
-        std::string coinText = "INSERT COIN / PRESS SPACE KEY";
-        int coinWidth = GetDrawStringWidth(coinText.c_str(), (int)coinText.size());
-        DrawString((Ut::SCREEN_WIDTH - coinWidth) / 2, 360, coinText.c_str(), GetColor(50, 50, 0));
-    }
+    // コンセプト文（サブタイトル）
+    SetFontSize(14);
+    std::string subText = "a minimalist light reflection puzzle";
+    int subWidth = GetDrawStringWidth(subText.c_str(), (int)subText.size());
+    DrawString((Ut::SCREEN_WIDTH - subWidth) / 2, 260, subText.c_str(), colorSubText);
 
     // ----------------================================================-
-    // 🪙 4. 画面右下のクレジット表記
+    // ⚪ 4. 静かに佇むスタート案内（点滅はさせず、静かに呼吸するような明度変化）
     // ----------------================================================-
     SetFontSize(16);
-    DrawString(Ut::SCREEN_WIDTH - 160, Ut::SCREEN_HEIGHT - 35, "CREDIT  00", colorWhite);
+    // サイン波を使って、文字の明るさを滑らかに変化させる（1/60秒ずつじんわり明滅）
+    float alphaSin = sinf(m_flashTimer * 0.04f) * 0.5f + 0.5f;
+    int textBright = 100 + static_cast<int>(100 * alphaSin); // 100〜200の間で滑らかに変化
+    unsigned int colorPress = GetColor(textBright, textBright, textBright + 20);
 
-    // 開発元（メーカーロゴっぽく原色で）
-    DrawString(30, Ut::SCREEN_HEIGHT - 35, " DEVELOPER CORP.", GetColor(180, 180, 180));
+    std::string pressText = "Press Space to Begin";
+    int pressWidth = GetDrawStringWidth(pressText.c_str(), (int)pressText.size());
+    DrawString((Ut::SCREEN_WIDTH - pressWidth) / 2, 380, pressText.c_str(), colorPress);
+
+    // ----------------================================================-
+    // 🏷️ 5. フッター（極小サイズでミニマルに配置）
+    // ------------------------------------------------================-
+    SetFontSize(12);
+    DrawString(60, Ut::SCREEN_HEIGHT - 70, "v1.0.0 // stable build", colorLine);
+    DrawString(Ut::SCREEN_WIDTH - 220, Ut::SCREEN_HEIGHT - 70, "designed by developer", colorSubText);
 
     SetFontSize(originalFontSize);
 }
