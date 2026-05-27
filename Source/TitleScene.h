@@ -2,8 +2,10 @@
 #include "Scene.h"
 
 class TitleScene : public Scene {
+    // --- TitleScene.h の private に追加 ---
 private:
     int m_flashTimer;
+    float m_introFade; // 💡 【追加】起動時のじわっとフェードイン用タイマー
 
     // 💡 フォントハンドルを保持する変数
     int m_fontLarge;  // タイトルロゴ用

@@ -27,6 +27,28 @@ float GetDistanceLineToPoint(VECTOR lineStart, VECTOR lineEnd, VECTOR point) {
 	return sqrtf((point.x - nearestX) * (point.x - nearestX) + (point.y - nearestY) * (point.y - nearestY));
 }
 
+void Stage::SpawnEmitParticles(const VECTOR& emitPos, unsigned int color)
+{
+	// 毎フレーム3粒ずつ、壁との衝突点からシュワシュワ湧き出させる
+	int spawnCount = 3;
+	for (int i = 0; i < spawnCount; ++i) {
+		DotParticle p;
+		p.pos = emitPos;
+
+		// 全方向（360度）にランダムな角度で飛び散る
+		float angle = static_cast<float>(GetRand(360)) * DX_PI_F / 180.0f;
+		// 1.0 〜 2.5 の間でランダムな初速
+		float speed = 1.0f + static_cast<float>(GetRand(15)) / 10.0f;
+
+		p.velocity = VGet(cosf(angle) * speed, sinf(angle) * speed, 0.0f);
+		p.maxLife = static_cast<float>(30 + GetRand(50 - 30)) * 0.1f; // 寿命は15〜30フレーム（約0.3〜0.5秒）
+		p.life = p.maxLife;
+		p.color = color;
+
+		m_particles.emplace_back(p);
+	}
+}
+
 Stage::Stage(const StageData& data)
 	: m_laser(nullptr)
 	, m_target(nullptr)
@@ -102,6 +124,7 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 	if (m_laser != nullptr && isLaserResetRequired) {
 		m_laser->Reset();
 		m_clearTimer = 0;
+		m_particles.clear();
 	}
 
 	// 💡 【超重要】クリア判定の前に、Updateの段階で衝突フラグを完全に確定させる！

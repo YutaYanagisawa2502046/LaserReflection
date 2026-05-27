@@ -151,7 +151,7 @@ void GameScene::LoadStage(int index) {
 
     m_state = GameState::FadeIn;
     m_clearTimer = 0;
-    m_stateTransitionTimer = 0.0f;
+    m_stateTransitionTimer = 1.0f;
     m_isDragging = false;
 }
 
@@ -219,7 +219,7 @@ SceneName GameScene::Update() {
     // ----------------================================================-
     else if (m_state == GameState::Clear) {
         m_isDragging = false;
-        m_stateTransitionTimer += 1.0f / 30.0f; // 💡 約0.5秒でフェードアウト（少し速くしました）
+        m_stateTransitionTimer += 1.0f / 60.0f; // 💡 約0.5秒でフェードアウト（少し速くしました）
 
         if (m_stateTransitionTimer >= 1.0f) {
             m_currentStageIndex++; // 次のステージへ
@@ -267,22 +267,53 @@ void GameScene::Draw() {
             "【R】キーを押すと最初から遊べます"
         };
 
-        int aaa = 0;
         for (const auto& str : Clearstr) {
-            int Width = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
+            int Width,Height;
+            GetDrawStringSizeToHandle(&Width, &Height, NULL, str.c_str(), (int)str.size(), m_fontUiMain);
+            
             DrawStringToHandle(static_cast<int>((Ut::SCREEN_WIDTH - Width) * tmp),
-                static_cast<int>(Ut::SCREEN_HEIGHT * tmp + (40 * aaa)),
+                static_cast<int>(Ut::SCREEN_HEIGHT * tmp),
                 str.c_str(), GetColor(235, 240, 245), m_fontUiMain);
-            aaa++;
         }
         return;
     }
 
-    // 🎨 モダンカラーの定義（タイトル画面の世界観を踏襲）
-    unsigned int colorUiWhite = GetColor(235, 240, 245); // メイン文字
-    unsigned int colorUiGray = GetColor(140, 150, 160); // 補助文字
-    unsigned int colorUiAccent = GetColor(160, 210, 230); // 差し色（シアン系）
-    unsigned int colorUiLine = GetColor(50, 58, 66);  // 区切り線用の極細グレー
+    // =================================================================
+    // 🎨 UI全体の「じわっと出現・じわっと消滅」比率計算
+    // =================================================================
+    float uiAlphaRatio = 1.0f;
+
+    if (m_state == GameState::FadeIn) {
+        // 💡 画面が明るくなる（タイマーが 1➔0 に減る）につれて、UIは 0➔1 へ「じわっと出現」
+        uiAlphaRatio = 1.0f - m_stateTransitionTimer;
+    }
+    else if (m_state == GameState::Clear) {
+        // 💡 画面が暗くなる（タイマーが 0➔1 に増える）につれて、UIは 1➔0 へ「じわっと消滅」
+        // これによって、ステージクリア時に文字や枠線も一緒に闇へ溶けていきます！
+        uiAlphaRatio = 1.0f - m_stateTransitionTimer;
+    }
+
+    // 安全のために 0.0f ～ 1.0f の範囲にクランプ
+    if (uiAlphaRatio < 0.0f) uiAlphaRatio = 0.0f;
+    if (uiAlphaRatio > 1.0f) uiAlphaRatio = 1.0f;
+
+    // 💡 計算した比率をすべての色成分（RGB）に掛け算する
+    unsigned int colorUiWhite = GetColor(static_cast<int>(235 * uiAlphaRatio),
+        static_cast<int>(240 * uiAlphaRatio),
+        static_cast<int>(245 * uiAlphaRatio));
+
+    unsigned int colorUiGray = GetColor(static_cast<int>(140 * uiAlphaRatio),
+        static_cast<int>(150 * uiAlphaRatio),
+        static_cast<int>(160 * uiAlphaRatio));
+
+    unsigned int colorUiAccent = GetColor(static_cast<int>(160 * uiAlphaRatio),
+        static_cast<int>(210 * uiAlphaRatio),
+        static_cast<int>(230 * uiAlphaRatio));
+
+    unsigned int colorUiLine = GetColor(static_cast<int>(50 * uiAlphaRatio),
+        static_cast<int>(58 * uiAlphaRatio),
+        static_cast<int>(66 * uiAlphaRatio));
+
     unsigned int colorUiAlert = GetColor(240, 140, 140); // 警告色（鏡が0枚のとき）
 
     // 1. ステージ内の各種オブジェクト・レーザーの描画
@@ -314,6 +345,9 @@ void GameScene::Draw() {
 
     // 下部を隔てるセパレート細線
     DrawLine(30, footerY - 10, Ut::SCREEN_WIDTH - 30, footerY - 10, colorUiLine);
+    SetDrawBlendMode(DX_BLENDMODE_ALPHA, 50);
+    DrawBox(30, footerY - 10, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(0, 0, 0), TRUE);
+    SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
     // 【左側カラム：操作説明】
     int leftX = 40;
@@ -331,33 +365,52 @@ void GameScene::Draw() {
     DrawStringToHandle(rightX, footerY + 62, "- Hold the light on the target for 0.5s to clear.", colorUiGray, m_fontUiSub);
 
 
-    // [A] クリア時の文字エフェクト（Clearのときだけ帯を出す）
-    if (m_state == GameState::Clear) {
-        std::string str = "STAGE CLEAR";
-        int SizeX = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
+    
+    float alpha = 255.0f * m_stateTransitionTimer;
 
-        SetDrawBlendMode(DX_BLENDMODE_ALPHA, 180);
-        DrawBox(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(15, 20, 25), TRUE);
-        SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
-
-        DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2, Ut::SCREEN_HEIGHT / 2 - 15, str.c_str(), colorUiAccent, m_fontUiMain);
-    }
-
+    int alphaInt = static_cast<int>(alpha);
+    alphaInt = min(max(0, alphaInt), 255);
     // [B] ✨ 【目に優しい版】フェードアウト（Clear）とフェードイン（FadeIn）の画面マスク
     if (m_state == GameState::Clear || m_state == GameState::FadeIn) {
-        float alpha = 255.0f * m_stateTransitionTimer;
-
-        int alphaInt = static_cast<int>(alpha);
-        if (alphaInt < 0) alphaInt = 0;
-        if (alphaInt > 255) alphaInt = 255;
-
         // 💡 変更ポイント：RGBを低く抑えた高級感のあるディープネイビー（または黒に近いグレー）
         // これなら画面が暗転する方向でフェードするため、目が一切疲れません！
-        unsigned int colorFadeMask = GetColor(15, 20, 28);
+        unsigned int colorFadeMask = GetColor(128, 128, 128);
 
         // アルファブレンドで画面全体を優しく包み込む
         SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaInt);
         DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, colorFadeMask, TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+    }
+    
+    // [A] クリア時の文字エフェクト
+    if (m_state == GameState::Clear) {
+        std::string str = "STAGE CLEAR";
+        int SizeX = GetDrawStringWidthToHandle(str.c_str(), (int)str.size(), m_fontUiMain);
+
+        // 💡 周りのUIとは独立して、「STAGE CLEAR」自体の輝度（0.0〜1.0）を計算
+        // クリア演出の進行度（m_stateTransitionTimer：0➔1）に合わせて、
+        // 最初の1/3（0.0〜0.33）のタイミングで一気にマックスまで明るくします！
+        float textAlphaRatio = m_stateTransitionTimer * 3.0f;
+        if (textAlphaRatio > 1.0f) textAlphaRatio = 1.0f; // マックスで固定
+
+        // 💡 画面が完全に暗転する直前（0.8〜1.0）だけ、闇に溶けるように少しだけ減衰させる
+        if (m_stateTransitionTimer > 0.8f) {
+            textAlphaRatio = (1.0f - m_stateTransitionTimer) / 0.2f;
+        }
+
+        // 💡 周りに流されず、最後までパキッと発光する美しいシアン（ペールアクア）
+        unsigned int colorClearText = GetColor(static_cast<int>(160 * textAlphaRatio),
+            static_cast<int>(210 * textAlphaRatio),
+            static_cast<int>(230 * textAlphaRatio));
+
+        // 文字の背後の黒い帯の不透明度も、文字の浮き上がりに同期させる
+        SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(180 * textAlphaRatio));
+        DrawBox(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(10, 15, 20), TRUE);
+        SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
+
+        // 確定した色で「STAGE CLEAR」を描画
+        DrawStringToHandle(Ut::SCREEN_WIDTH / 2 - SizeX / 2,
+            Ut::SCREEN_HEIGHT / 2 - 15,
+            str.c_str(), colorClearText, m_fontUiMain);
     }
 }

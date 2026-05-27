@@ -1,4 +1,4 @@
-#include <vector>
+ï»¿#include <vector>
 #include <string>
 #include "DxLib.h"
 #include "Mirror.h"
@@ -7,7 +7,7 @@
 #include "Laser.h"
 #include "LaserTarget.h"
 
-// ‘O‚Éì‚Á‚½ StageData \‘¢‘Ì
+// å‰ã«ä½œã£ãŸ StageData æ§‹é€ ä½“
 struct StageData {
 	VECTOR laserPos;
 	VECTOR laserDir;
@@ -15,9 +15,9 @@ struct StageData {
 	VECTOR targetPos;
 	float targetRadius;
 	int maxMirrors;
-	LaserColor requiredColor; // š’Ç‰Á
+	LaserColor requiredColor; // â˜…è¿½åŠ 
 	std::vector<Obstacle> obstacles;
-	std::vector<Filter> filters; // š’Ç‰Á
+	std::vector<Filter> filters; // â˜…è¿½åŠ 
 
 	StageData(const VECTOR& laserPos, const VECTOR& laserDir, const LaserColor& initialColor, const VECTOR& targetPos, float targetRadius, int maxMirrors, const LaserColor& requiredColor, const std::vector<Obstacle>& obstacles, const std::vector<Filter>& filters)
 		: laserPos(laserPos), laserDir(laserDir), initialColor(initialColor), targetPos(targetPos), targetRadius(targetRadius), maxMirrors(maxMirrors), requiredColor(requiredColor), obstacles(obstacles), filters(filters)
@@ -27,20 +27,28 @@ struct StageData {
 	StageData ClearDebugStage()
 	{
 		return StageData(
-			VGet(100, 300, 0), VGet(1, 0, 0),        // ƒŒ[ƒU[F¶‚©‚ç‰E‚Ö
+			VGet(100, 300, 0), VGet(1, 0, 0),        // ãƒ¬ãƒ¼ã‚¶ãƒ¼ï¼šå·¦ã‹ã‚‰å³ã¸
 			LaserColor::Red,
-			VGet(700, 300, 0), 25.0f,                // “IF‰E’[A—v‹F‚ÍÂ
-			0, LaserColor::Blue,                      // ‹¾‚Í0–‡AƒNƒŠƒAğŒFÂ
-			{},                                      // •ÇF‚È‚µ
+			VGet(700, 300, 0), 25.0f,                // çš„ï¼šå³ç«¯ã€è¦æ±‚è‰²ã¯é’
+			0, LaserColor::Blue,                      // é¡ã¯0æšã€ã‚¯ãƒªã‚¢æ¡ä»¶ï¼šé’
+			{},                                      // å£ï¼šãªã—
 			{
 				Filter(VGet(400, 100, 0), VGet(400, 500, 0), LaserColor::Blue)
-			} // ’†‰›‚Éc‚ÌÂƒtƒBƒ‹ƒ^[
+			} // ä¸­å¤®ã«ç¸¦ã®é’ãƒ•ã‚£ãƒ«ã‚¿ãƒ¼
 		);
 	};
 
 	
 };
 
+// ğŸ’¡ ãƒ‰ãƒƒãƒˆ1ã¤ã®æƒ…å ±
+struct DotParticle {
+	VECTOR pos;			// ä½ç½®
+	VECTOR velocity;	// ç§»å‹•é€Ÿåº¦ã¨æ–¹å‘
+	float life;			// æ®‹ã‚Šå¯¿å‘½ï¼ˆãƒ•ãƒ¬ãƒ¼ãƒ æ•°ï¼‰
+	float maxLife;		// æœ€å¤§å¯¿å‘½
+	unsigned int color; // è‰²
+};
 
 class Stage {
 private:
@@ -55,17 +63,20 @@ private:
 	bool m_isDragging;
 	VECTOR m_dragStartPos;
 
+	// ğŸ’¡ ã€è¿½åŠ ã€‘Stageå´ã§ãƒ‘ãƒ¼ãƒ†ã‚£ã‚¯ãƒ«ã‚’ä¸€å…ƒç®¡ç†ã™ã‚‹
+	std::vector<DotParticle> m_particles;
+	void SpawnEmitParticles(const VECTOR& emitPos, unsigned int color);
 public:
 	Stage(const StageData& data);
 	~Stage();
 
-	bool Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput); // •Ô‚è’lFƒXƒe[ƒWƒNƒŠƒA‚µ‚½‚ç true
+	bool Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput); // è¿”ã‚Šå€¤ï¼šã‚¹ãƒ†ãƒ¼ã‚¸ã‚¯ãƒªã‚¢ã—ãŸã‚‰ true
 	void Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& dragCurrentPos);
 
 	bool IsTargetHit() const;
 	void AddMirror(const VECTOR& start, const VECTOR& end);
 
-	// GameScene‘¤‚ÅUIic‚è‹¾‚Ì–‡”‚È‚Çj‚ğ•\¦‚·‚é‚½‚ß‚ÌƒQƒbƒ^[
+	// GameSceneå´ã§UIï¼ˆæ®‹ã‚Šé¡ã®æšæ•°ãªã©ï¼‰ã‚’è¡¨ç¤ºã™ã‚‹ãŸã‚ã®ã‚²ãƒƒã‚¿ãƒ¼
 	int GetRemainingMirrors() const { return m_maxMirrors - (int)m_mirrors.size(); }
 	int GetMaxMirrors() const { return m_maxMirrors; }
 };

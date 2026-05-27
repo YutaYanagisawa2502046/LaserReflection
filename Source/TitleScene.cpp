@@ -22,6 +22,7 @@ TitleScene::~TitleScene() {
 
 void TitleScene::Initialize() {
     m_flashTimer = 0;
+    m_introFade = 0;
 
     // 💡 Windowsに標準搭載されているスタイリッシュなフォントを指定
     // 第4引数に DX_FONTTYPE_ANTIALIASING を渡すことで、輪郭が驚くほど滑らかになります！
@@ -34,8 +35,18 @@ void TitleScene::Initialize() {
 
 SceneName TitleScene::Update() {
     m_flashTimer++;
-    if (CheckHitKey(KEY_INPUT_SPACE) || (GetMouseInput() & MOUSE_INPUT_LEFT)) {
-        return SceneName::Game;
+
+    // 💡 起動後、約0.8秒（45フレーム）かけて 1.0f に向かってじわっと増やす
+    if (m_introFade < 1.0f) {
+        m_introFade += 1.0f / 45.0f;
+        if (m_introFade > 1.0f) m_introFade = 1.0f;
+    }
+
+    // フェードインが完全に終わるまではスペースキーを受け付けないようにするとより丁寧です
+    if (m_introFade >= 1.0f) {
+        if (CheckHitKey(KEY_INPUT_SPACE) || (GetMouseInput() & MOUSE_INPUT_LEFT)) {
+            return SceneName::Game;
+        }
     }
     return SceneName::None;
 }
@@ -47,7 +58,13 @@ void TitleScene::Draw() {
     unsigned int colorAccent = GetColor(160, 210, 230); // ペールアクア（差し色）
     unsigned int colorLine = GetColor(60, 70, 80);  // 極細枠線用グレー
 
-    // 💡 マジックナンバーを排除し、Ut::SCREEN_~ を使ってスタイリッシュな外枠を描画
+    // 💡 全体の描画にかけるアルファ値を m_introFade から計算
+    int currentAlpha = static_cast<int>(255 * m_introFade);
+
+    // 💡 描画全体の透明度をセット（これ以降の DrawString 等がすべてじわっと浮き出ます！）
+    SetDrawBlendMode(DX_BLENDMODE_ALPHA, currentAlpha);
+
+    // --- (ここから下の各種 DrawBox や DrawStringToHandle は以前のままでOK！) ---
     DrawBox(40, 40, Ut::SCREEN_WIDTH - 40, Ut::SCREEN_HEIGHT - 40, colorLine, FALSE);
 
     // ----------------================================================-
@@ -98,4 +115,6 @@ void TitleScene::Draw() {
     std::string creditText = "designed by developer";
     int creditWidth = GetDrawStringWidthToHandle(creditText.c_str(), (int)creditText.size(), m_fontSmall);
     DrawStringToHandle(Ut::SCREEN_WIDTH - 40 - creditWidth - 20, footerY, creditText.c_str(), colorSubText, m_fontSmall);
+
+    SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 }
