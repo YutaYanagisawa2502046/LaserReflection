@@ -65,7 +65,7 @@ private:
 
 	// 💡 【追加】Stage側でパーティクルを一元管理する
 	std::vector<DotParticle> m_particles;
-	void SpawnEmitParticles(const VECTOR& emitPos, unsigned int color);
+	void SpawnEmitParticles(const VECTOR& emitPos, unsigned int color, const VECTOR& normal);
 public:
 	Stage(const StageData& data);
 	~Stage();

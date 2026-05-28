@@ -50,4 +50,5 @@ public:
 
     VECTOR GetEndPoint() const { return m_history.back().position; }
     bool IsHitObstacle() const { return m_isHitObstacle; }
+    auto GetHistory() const { return m_history; };
 };

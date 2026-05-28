@@ -31,7 +31,7 @@ void Laser::Reset() {
 void Laser::Update() {
 	// 毎フレーム、growSpeed 分だけレーザーの限界可視長さを伸ばしていく
 	const float MAX_REACH = 3000.0f;
-	if (m_currentLength < MAX_REACH) {
+	if (m_currentLength < MAX_REACH && !m_isLooping) {
 		m_currentLength += m_growSpeed;
 		if (m_currentLength > MAX_REACH) {
 			m_currentLength = MAX_REACH;

@@ -22,5 +22,5 @@ public:
     // ÉQÉbÉ^Å[
     VECTOR GetStart() const { return m_start; }
     VECTOR GetEnd()   const { return m_end; }
-
+    VECTOR GetNormal()const { VECTOR tmp = VSub(m_start, m_end); return VGet(tmp.y, tmp.x, 0.f); }
 };
