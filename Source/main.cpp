@@ -19,6 +19,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         return -1; // 初期化に失敗したら直ちに終了
     }
 
+	// SEデータの読み込み：Masterクラスのサウンドマネージャーに、レーザーSEのファイルを登録します
     Master::m_soundManager->AddSEData("Resource/SE/sen_mi_lasergun04.mp3",SE::LASER);
 
     // ---- 3. 描画先の設定（裏画面） ----
@@ -27,7 +28,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     SetDrawScreen(DX_SCREEN_BACK);
 
     // ---- 4. ゲームシステムの初期化 ----
-
+	// ここでは、シーンマネージャーを初期化して、最初のシーン（タイトル）をロードします
     SceneManager sceneManager;
     sceneManager.Initialize(); // シーンマネージャーを初期化（最初のシーンをロード）
 
@@ -45,7 +46,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
         // ② 描画処理（裏画面への書き込み）
         sceneManager.Draw();
 
-        WaitTimer(1000 / 60);
+		// ③ フレームレート制御（Ut::FPSに固定）
+        WaitTimer(1000 / Ut::FPS);
 
         // ③ 画面反映（裏画面の内容を実際のディスプレイ＝表画面に転送）
         ScreenFlip();
@@ -53,6 +55,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
 
     // ---- 6. 終了処理 ----
 
+	// ゲームループを抜けたら、シーンマネージャーやサウンドマネージャーなどのリソースを解放します
     delete Master::m_soundManager;
 
     DxLib_End(); // DXライブラリの仕様終了に伴うクリーンアップ処理

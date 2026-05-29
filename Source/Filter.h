@@ -4,8 +4,8 @@
 
 class Filter {
 private:
-    VECTOR m_start;
-    VECTOR m_end;
+	VECTOR m_start; // フィルターの始点
+	VECTOR m_end;   // フィルターの終点
     LaserColor m_color; // このフィルターが何色に変えるか
 
 public:
@@ -31,7 +31,7 @@ public:
         DrawCircle((int)m_end.x, (int)m_end.y, 4, drawColor, TRUE);
     }
 
-    VECTOR GetStart() const { return m_start; }
-    VECTOR GetEnd()   const { return m_end; }
-    LaserColor GetLaserColor() const { return m_color; }
+	VECTOR GetStart() const { return m_start; } // フィルターの始点を取得
+	VECTOR GetEnd()   const { return m_end; }   // フィルターの終点を取得
+	LaserColor GetLaserColor() const { return m_color; }    // このフィルターが何色かを取得
 };

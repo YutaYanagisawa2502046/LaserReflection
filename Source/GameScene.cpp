@@ -15,8 +15,8 @@ GameScene::GameScene()
     , m_isDragging(false)
     , m_dragStartPos(VGet(0, 0, 0))
     , m_dragCurrentPos(VGet(0, 0, 0))
-    , m_fontUiMain(-1) // 💡 初期化
-    , m_fontUiSub(-1)  // 💡 初期化
+    , m_fontUiMain(-1) 
+    , m_fontUiSub(-1)  
 {
 }
 
@@ -30,7 +30,7 @@ GameScene::~GameScene() {
 }
 
 void GameScene::Initialize() {
-    m_stages.clear();
+	m_stages.clear();   // 💡 既存のステージデータをクリアしてから新たに読み込む
 
     {
         // 💡 1. 実行ファイルと同じフォルダにある「StageData.txt」を開く
@@ -57,9 +57,9 @@ void GameScene::Initialize() {
 
             if (token == "STAGE_START") {
                 currentStage = StageData(); // 構造体をきれいにリセット
-                isReadingStage = true;
+				isReadingStage = true;  // 新しいステージの読み込み開始
             }
-            else if (token == "STAGE_END") {
+			else if (token == "STAGE_END") {// 1つのステージの読み込みが完了したら、データベースに保存して次のステージの準備
                 if (isReadingStage) {
                     m_stages.push_back(currentStage); // 解析が終わったステージデータをデータベースに保存！
                     isReadingStage = false;
@@ -67,7 +67,7 @@ void GameScene::Initialize() {
             }
             else if (token == "LASER") {
                 std::string x, y, dx, dy, colorStr;
-                std::getline(ss, x, ','); std::getline(ss, y, ',');
+				std::getline(ss, x, ','); std::getline(ss, y, ',');
                 std::getline(ss, dx, ','); std::getline(ss, dy, ',');
                 std::getline(ss, colorStr, ','); // 💡 5つ目の要素（色）を取得
 
@@ -107,7 +107,7 @@ void GameScene::Initialize() {
                 ));
             }
             else if (token == "FILTER") {
-                std::string x1, y1, x2, y2, colorStr;
+				std::string x1, y1, x2, y2, colorStr;
                 std::getline(ss, x1, ','); std::getline(ss, y1, ',');
                 std::getline(ss, x2, ','); std::getline(ss, y2, ',');
                 std::getline(ss, colorStr, ',');
@@ -133,6 +133,7 @@ void GameScene::Initialize() {
     m_fontUiMain = CreateFontToHandle(fontName, 26, 1, DX_FONTTYPE_ANTIALIASING);
     m_fontUiSub = CreateFontToHandle(fontName, 14, 1, DX_FONTTYPE_ANTIALIASING);
 
+	// 💡 最初のステージを読み込む
     m_currentStageIndex = 0;
     LoadStage(m_currentStageIndex);
 }
@@ -149,6 +150,7 @@ void GameScene::LoadStage(int index) {
         m_currentStage = new Stage(m_stages[index]);
     }
 
+	// ステージが切り替わるたびに、フェードイン状態から始めるようにする
     m_state = GameState::FadeIn;
     m_clearTimer = 0;
     m_stateTransitionTimer = 1.0f;
@@ -168,6 +170,7 @@ SceneName GameScene::Update() {
     int mouseInput = GetMouseInput();
     int mouseX, mouseY;
     GetMousePoint(&mouseX, &mouseY);
+	// マウス座標を VECTOR 型に変換
     VECTOR mousePos = VGet(static_cast<float>(mouseX), static_cast<float>(mouseY), 0.0f);
 
     // 前フレームの入力（静的変数などで保持）
@@ -179,14 +182,17 @@ SceneName GameScene::Update() {
     if (m_state == GameState::Playing) {
 
         // 💡 ドラッグによる鏡の新規配置処理
+		// マウスの左ボタンが押された瞬間を検出してドラッグ開始
         if ((mouseInput & MOUSE_INPUT_LEFT) && !(prevMouseInput & MOUSE_INPUT_LEFT)) {
             m_isDragging = true;
             m_dragStartPos = mousePos;
             m_dragCurrentPos = mousePos;
         }
+		// ドラッグ中は現在のマウス位置を更新
         else if (m_isDragging && (mouseInput & MOUSE_INPUT_LEFT)) {
             m_dragCurrentPos = mousePos;
         }
+		// マウスの左ボタンが離された瞬間を検出してドラッグ終了
         else if (m_isDragging && !(mouseInput & MOUSE_INPUT_LEFT)) {
             m_isDragging = false;
             // ドラッグ終了時にステージに鏡を追加
@@ -205,11 +211,13 @@ SceneName GameScene::Update() {
             }
         }
         else {
+			// 的から外れたら、クリアタイマーをリセットしてやり直し
             m_clearTimer = 0;
         }
 
         // デバッグ用の強制ステージスキップ（数字の「3」キーで次へ）
         if (CheckHitKey(KEY_INPUT_3)) {
+			// 💡 強制的にクリア状態にして次のステージへ（デバッグ用）
             m_state = GameState::Clear;
             m_stateTransitionTimer = 0.0f;
         }
@@ -218,6 +226,7 @@ SceneName GameScene::Update() {
     // 🌟 状態 [B] : ステージクリア演出中 (Clear)
     // ----------------================================================-
     else if (m_state == GameState::Clear) {
+		// 💡 クリア状態になったら、ドラッグ操作を無効化して、次のステージへの遷移タイマーをカウントアップ
         m_isDragging = false;
         m_stateTransitionTimer += 1.0f / 60.0f; // 💡 約0.5秒でフェードアウト（少し速くしました）
 
@@ -248,6 +257,7 @@ SceneName GameScene::Update() {
 
         // 完全に不透明度が 0 以下になったら、通常プレイ状態へ移行
         if (m_stateTransitionTimer <= 0.0f) {
+			// 💡 フェードインが完了したら、通常プレイ状態へ移行して、タイマーもリセット
             m_stateTransitionTimer = 0.0f;
             m_state = GameState::Playing;
         }
@@ -261,19 +271,39 @@ void GameScene::Draw() {
     // ---- エンディング画面（全ステージクリア時） ----
     if (m_currentStageIndex >= (int)m_stages.size() || m_currentStage == nullptr) {
         float tmp = 1.0f / 2.0f;
+		// クリアメッセージを3行表示
         std::string Clearstr[3] = {
             "ALL STAGE CLEAR !!!" ,
             "おめでとうございます！天才レーザーパズラー誕生です！" ,
             "【R】キーを押すと最初から遊べます"
         };
 
+		static float clearAlpha = 0.0f; // クリアメッセージのアルファ値を管理する静的変数
+		clearAlpha += 1.0f / 60.0f; // 約1.0秒かけて完全に表示されるようにアルファ値を増加させる
+		if (clearAlpha > 1.0f) clearAlpha = 1.0f; // アルファ値を最大1.0fにクランプ
+
+		// 💡 画面中央に大きく表示（フォントサイズは m_fontUiMain を使用）
+		// 💡 文字列の幅と高さを取得して、中央に配置するための座標を計算
+        int HeightCount = 0;
+		const int LineDist = 10; // 行間を空けない場合は0、空ける場合は適宜数値を調整してください
         for (const auto& str : Clearstr) {
             int Width,Height;
             GetDrawStringSizeToHandle(&Width, &Height, NULL, str.c_str(), (int)str.size(), m_fontUiMain);
             
+            int YCenter = (Height + LineDist) * 3;
+
+			SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(255 * clearAlpha)); // 💡 文字のアルファ値も全体のフェードイン比率に合わせる
             DrawStringToHandle(static_cast<int>((Ut::SCREEN_WIDTH - Width) * tmp),
-                static_cast<int>(Ut::SCREEN_HEIGHT * tmp),
+                static_cast<int>((Ut::SCREEN_HEIGHT - YCenter) * tmp) + HeightCount,
                 str.c_str(), GetColor(235, 240, 245), m_fontUiMain);
+            HeightCount += Height + LineDist; // 行間を少し空ける
+			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドモードを元に戻す
+        }
+
+        if (CheckHitKey(KEY_INPUT_R))
+        {
+			Initialize();
+            // 💡 Rキーを押すと最初からやり直せることを明示的にチェックしておく（Update内でもチェックしていますが、ここでもう一度）
         }
         return;
     }
@@ -281,6 +311,7 @@ void GameScene::Draw() {
     // =================================================================
     // 🎨 UI全体の「じわっと出現・じわっと消滅」比率計算
     // =================================================================
+	// 💡 フェードイン・フェードアウトの状態に応じて、UI全体のアルファ比率を計算する
     float uiAlphaRatio = 1.0f;
 
     if (m_state == GameState::FadeIn) {
@@ -323,12 +354,12 @@ void GameScene::Draw() {
     // 📊 2. 上部ヘッダーUI（現在の状況）
     // =================================================================
     // ステージ数表示（細線の上にスタイリッシュに配置）
-    char stageBuf[32];
-    sprintf_s(stageBuf, "STAGE  %02d  /  %02d", m_currentStageIndex + 1, (int)m_stages.size());
-    DrawStringToHandle(30, 20, stageBuf, colorUiAccent, m_fontUiMain);
+	char stageBuf[32];  // 💡 ステージ番号を「STAGE 01 / 10」のようにフォーマットして表示
+	sprintf_s(stageBuf, "STAGE  %02d  /  %02d", m_currentStageIndex + 1, (int)m_stages.size()); // 1から始まる表示にするために +1 しています
+	DrawStringToHandle(30, 20, stageBuf, colorUiAccent, m_fontUiMain);  // 💡 画面の左上に配置（30pxの余白を空けて）
 
     // 残りの鏡枚数表示
-    int remaining = m_currentStage->GetRemainingMirrors();
+	int remaining = m_currentStage->GetRemainingMirrors();  // 💡 残り枚数が0より多ければ通常色、0なら警告色で表示
     unsigned int mirrorTextColor = (remaining > 0) ? colorUiWhite : colorUiAlert;
     char buf[64];
     sprintf_s(buf, "MIRRORS  :  %d  /  %d", remaining, m_currentStage->GetMaxMirrors());
@@ -354,7 +385,8 @@ void GameScene::Draw() {
     DrawStringToHandle(leftX, footerY, "[ CONTROLS ]", colorUiAccent, m_fontUiSub);
     DrawStringToHandle(leftX, footerY + 22, "Left Drag       : Place Mirror", colorUiGray, m_fontUiSub);
     DrawStringToHandle(leftX, footerY + 42, "Right Click     : Remove Mirror", colorUiGray, m_fontUiSub);
-    DrawStringToHandle(leftX, footerY + 62, "Mouse Wheel     : Rotate Mirror ( 1° / +Shift: 0.1° )", colorUiWhite, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 62, "Middle Click    : Fire Laser", colorUiGray, m_fontUiSub);
+    DrawStringToHandle(leftX, footerY + 82, "Mouse Wheel     : Rotate Mirror ( 1° / +Shift: 0.1° )", colorUiWhite, m_fontUiSub);
 
     // 【右側カラム：パズルのルール】
     // 画面中央（Widthの半分）より少し右からスタートして綺麗にセパレート
@@ -364,16 +396,15 @@ void GameScene::Draw() {
     DrawStringToHandle(rightX, footerY + 42, "- Match the laser color with the target requirement.", colorUiGray, m_fontUiSub);
     DrawStringToHandle(rightX, footerY + 62, "- Hold the light on the target for 0.5s to clear.", colorUiGray, m_fontUiSub);
 
-
-    
     float alpha = 255.0f * m_stateTransitionTimer;
 
+	// 安全のために 0～255 の範囲にクランプして整数化
     int alphaInt = static_cast<int>(alpha);
     alphaInt = min(max(0, alphaInt), 255);
+
     // [B] ✨ 【目に優しい版】フェードアウト（Clear）とフェードイン（FadeIn）の画面マスク
     if (m_state == GameState::Clear || m_state == GameState::FadeIn) {
-        // 💡 変更ポイント：RGBを低く抑えた高級感のあるディープネイビー（または黒に近いグレー）
-        // これなら画面が暗転する方向でフェードするため、目が一切疲れません！
+		// 💡 画面全体を覆うグレーの半透明マスク（アルファ値はタイマーに応じて変化）
         unsigned int colorFadeMask = GetColor(128, 128, 128);
 
         // アルファブレンドで画面全体を優しく包み込む

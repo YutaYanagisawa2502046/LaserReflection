@@ -2,6 +2,7 @@
 #include "DxLib.h"
 
 // --- Target.h の冒頭 ---
+// 的クラス：レーザーを当てる的の情報と描画処理を担当
 enum class LaserColor : unsigned int {
 	Red = 0,
 	Green = 1,
@@ -10,9 +11,9 @@ enum class LaserColor : unsigned int {
 
 class LaserTarget {
 private:
-	VECTOR m_position;
-	float m_radius;
-	bool m_isHit;
+	VECTOR m_position;	// 的の中心位置
+	float m_radius;		// 的の半径
+	bool m_isHit;		// 的にレーザーが当たっているかのフラグ
 	LaserColor m_requiredColor; // ★追加：要求する色
 
 public:

@@ -22,5 +22,6 @@ public:
     // ゲッター
     VECTOR GetStart() const { return m_start; }
     VECTOR GetEnd()   const { return m_end; }
-    VECTOR GetNormal()const { VECTOR tmp = VSub(m_start, m_end); return VGet(tmp.y, tmp.x, 0.f); }
+    // 壁の法線ベクトルを取得する関数（レーザーの衝突時のパーティクル計算で使用）
+	VECTOR GetNormal()const { VECTOR tmp = VSub(m_start, m_end); return VGet(tmp.y, tmp.x, 0.f); } 
 };

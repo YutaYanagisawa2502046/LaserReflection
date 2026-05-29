@@ -13,7 +13,6 @@ TitleScene::TitleScene()
 {
 }
 
-// 💡 終了時にフォントハンドルを削除してメモリを綺麗にする
 TitleScene::~TitleScene() {
     DeleteFontToHandle(m_fontLarge);
     DeleteFontToHandle(m_fontMedium);

@@ -4,7 +4,7 @@
 class TitleScene : public Scene {
     // --- TitleScene.h の private に追加 ---
 private:
-    int m_flashTimer;
+	int m_flashTimer;   // 💡 タイトルロゴの点滅用タイマー
     float m_introFade; // 💡 【追加】起動時のじわっとフェードイン用タイマー
 
     // 💡 フォントハンドルを保持する変数
