@@ -215,12 +215,14 @@ SceneName GameScene::Update() {
             m_clearTimer = 0;
         }
 
+#if _DEBUG
         // デバッグ用の強制ステージスキップ（数字の「3」キーで次へ）
         if (CheckHitKey(KEY_INPUT_3)) {
 			// 💡 強制的にクリア状態にして次のステージへ（デバッグ用）
             m_state = GameState::Clear;
             m_stateTransitionTimer = 0.0f;
         }
+#endif // _DEBUG
     }
     // ----------------================================================-
     // 🌟 状態 [B] : ステージクリア演出中 (Clear)
