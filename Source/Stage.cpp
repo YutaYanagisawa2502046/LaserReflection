@@ -60,6 +60,9 @@ Stage::Stage(const StageData& data)
 	, m_target(nullptr)
 	, m_maxMirrors(data.maxMirrors)
 	, m_clearTimer(0)
+	, m_hitObstacleIndex(-1) // 💡 【追加】初期化
+	, m_isHitObstacle(false) // 💡 【追加】
+	, m_hitObstaclePos(VGet(0, 0, 0)) // 💡 【追加】
 {
 	m_laser = new Laser(data.laserPos, data.laserDir, data.initialColor);
 	m_target = new LaserTarget(data.targetPos, data.targetRadius, data.requiredColor);
@@ -137,6 +140,7 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 	if (m_target != nullptr) {
 		m_target->ResetHitState(); // まず綺麗にする
 	}
+	bool isCurrentlyHitting = false; // 今この瞬間当たっているかのローカルフラグ
 	if (m_laser != nullptr && m_target != nullptr) {
 		// レーザーに擬似計算を走らせて的へのヒット状況を「実更新」する
 		m_laser->Draw(m_mirrors, m_obstacles, m_filters, *m_target);
@@ -145,11 +149,13 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 
 			// Laserクラスから最新の軌跡履歴を貰う
 		const auto& history = m_laser->GetHistory();
+		m_hitObstacleIndex = -1;
 
 		if (!history.empty()) {
 			// 配列の最後（末尾）の要素が、レーザーの先端（行き止まり）
 			const auto& lastHistory = history.back();
 
+			int index = 0;
 			// 💡 もしその先端の座標の周囲に壁（Obstacle）が存在するなら、
 			// そこが「壁に当たって止まっている場所」と判断できます！
 			for (const auto& obstacle : m_obstacles) {
@@ -157,8 +163,10 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 				// もしくは、Laserクラス側で「最後は壁で終わったフラグ」を持たせておくとより確実です
 				float dist = GetDistanceLineToPoint(obstacle.GetStart(), obstacle.GetEnd(), lastHistory.position);
 
-				if (dist < 5.0f) { // 壁に当たっている
+				if (isCurrentlyHitting = m_isHitObstacle = (dist < 5.0f)) { // 壁に当たっている
 
+					m_hitObstacleIndex = index;
+					m_hitObstaclePos = lastHistory.position;
 					VECTOR normal = obstacle.GetNormal();
 					// 長さを1に正規化（揃える）
 					float len = VSize(normal);
@@ -181,8 +189,31 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 					SpawnEmitParticles(lastHistory.position, PtColor, normal);
 					break;
 				}
+
+				index++;
 			}
 		}
+	}
+	
+	// ----------------================================================-
+	// ✨ 【ここがキモ！】着弾点の「余熱・発光」フェードイン・アウト処理
+	// ----------------================================================-
+	if (isCurrentlyHitting) {
+		// 💡 レーザーが当たっている間は、約60フレーム（1秒）かけて「じわっ」と最大輝度へ加熱
+		m_hitGlowAlpha += 1.0f / 60.0f;
+		if (m_hitGlowAlpha > 1.0f) m_hitGlowAlpha = 1.0f;
+		// 揺らげる
+		if (GetRand(100) <= 35)
+		{
+			float tmp = 1.0f - m_hitGlowAlpha;
+			m_hitGlowAlpha -= (tmp + 0.01f) * (1.0f / (60.0f * 1.5f));
+		}
+
+	}
+	else {
+		// 💡 レーザーが逸れたら、約90フレーム（1.5秒）かけて「スーッ」と余熱が冷めるように消灯
+		m_hitGlowAlpha -= 1.0f / (60.0f * 1.5f);
+		if (m_hitGlowAlpha < 0.0f) m_hitGlowAlpha = 0.0f;
 	}
 
 	// 💡 【追加】パーティクルの移動と寿命更新処理
@@ -190,12 +221,6 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 	// ✨ パーティクルの移動・重力・寿命更新処理
 	// ----------------================================================-
 	for (auto it = m_particles.begin(); it != m_particles.end(); ) {
-		DrawPixel(
-			static_cast<int>(it->pos.x),
-			static_cast<int>(it->pos.y),
-			it->color
-		);
-
 		// 💡 【ここを追加！】火花の縦方向の速度（velocity.y）に、毎フレーム重力を加算する
 		// 数値を大きくすると「ドサッ」と重く落ち、小さくすると「フワッ」とゆっくり落ちます。
 		// 0.08f 〜 0.15f あたりでお好みの「軽さ」に調整してみてください！
@@ -227,6 +252,58 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 	for (auto& obstacle : m_obstacles) obstacle.Draw();
 	for (auto& filter : m_filters)     filter.Draw();
 	for (auto& mirror : m_mirrors)     mirror.Draw();
+
+	for (const auto& Particle : m_particles)
+	{
+		DrawPixel(
+			static_cast<int>(Particle.pos.x),
+			static_cast<int>(Particle.pos.y),
+			Particle.color
+		);
+	}
+
+	// 1. 静的オブジェクトの描画
+	// 💡 【ここを追加！】壁に当たっているなら、着弾点を中心に広がる光の円を描く
+	if (m_isHitObstacle) {
+		//// アルファブレンド（半透明）を有効にする
+		//// これにより、パキッとした円ではなく、元の壁やレーザーと綺麗に重なる光になります
+		//SetDrawBlendMode(DX_BLENDMODE_ALPHA, 120);
+
+		//unsigned int colorGlow = GetColor(255, 215, 0); // 鮮やかなゴールド・イエロー
+
+		//// 💡 着弾点を中心に、半径5〜6pxの小さな塗りつぶしの円を描く（熱を帯びた中心核）
+		//DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
+		//	5, colorGlow, TRUE);
+
+		//// 💡 さらにその周りに、半径12pxほどの少し薄い円を重ねる（周囲に広がる光の余韻）
+		//SetDrawBlendMode(DX_BLENDMODE_ALPHA, 60);
+		//DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
+		//	12, colorGlow, TRUE);
+
+		//SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドを元に戻す
+
+		if (m_hitGlowAlpha > 0.0f) {
+			unsigned int colorGlow = GetColor(255, 215, 0); // 鮮やかなゴールド・イエロー
+
+			// 💡 1. 中心の明るい核（最大不透明度 140 に、現在のフェード率をかける）
+			int alphaCenter = static_cast<int>(140 * m_hitGlowAlpha);
+			SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaCenter);
+			DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
+				5, colorGlow, TRUE);
+
+			// 💡 2. 周囲の大きな光の広がり（最大不透明度 60 に、現在のフェード率をかける）
+			int alphaOuter = static_cast<int>(60 * m_hitGlowAlpha);
+			SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaOuter);
+
+			// 💡 広がる感じをさらに強化：発光が強くなる（m_hitGlowAlphaが増える）につれて、
+			// 円の半径自体も「10px ➔ 15px」へ、ポッと膨らむように変化させると最高に気持ちいいです！
+			int currentRadius = 10 + static_cast<int>(5 * m_hitGlowAlpha);
+			DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
+				currentRadius, colorGlow, TRUE);
+
+			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドを元に戻す
+		}
+	}
 
 	// ドラッグ中のプレビュー線
 	if (isDragging) {

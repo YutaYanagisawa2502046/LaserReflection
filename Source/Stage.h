@@ -63,6 +63,11 @@ private:
 	bool m_isDragging;
 	VECTOR m_dragStartPos;
 
+	int m_hitObstacleIndex; // 💡 【追加】現在レーザーが当たっている壁のインデックス（-1はどこにも当たっていない）
+	bool m_isHitObstacle;    // 💡 【追加】いま壁に当たっているかどうかのフラグ
+	VECTOR m_hitObstaclePos; // 💡 【追加】レーザーが壁に激突しているまさにその座標
+	float m_hitGlowAlpha;    // 💡 【変更】0.0f（消灯）〜 1.0f（最大発光）を滑らかに動くタイマー
+
 	// 💡 【追加】Stage側でパーティクルを一元管理する
 	std::vector<DotParticle> m_particles;
 	void SpawnEmitParticles(const VECTOR& emitPos, unsigned int color, const VECTOR& normal);
