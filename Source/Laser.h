@@ -28,16 +28,14 @@ private:
     float m_currentLength;
     float m_growSpeed;
 
-    // ---- 無限ループ判定用の追加変数 ----
+    bool m_isLaserStart;
+
     std::vector<RayHistory> m_history; // 反射の履歴リスト
-    bool m_isLooping;                  // 無限ループを検知したかどうかのフラグ
+    bool m_isLooping;
 
     bool CheckLineIntersection(VECTOR p1, VECTOR p2, VECTOR p3, VECTOR p4, VECTOR* outIntersection);
 
     float GetDistanceLineToPoint(VECTOR p1, VECTOR p2, VECTOR pt);
-
-    // 過去に同じ軌道を通ったかチェックする判定関数
-    bool IsDuplicateOrbit(VECTOR pos, VECTOR dir);
 
 public:
     // コンストラクタ
@@ -51,4 +49,5 @@ public:
     VECTOR GetEndPoint() const { return m_history.back().position; }
     bool IsHitObstacle() const { return m_isHitObstacle; }
     auto GetHistory() const { return m_history; };
+    bool IsLoop() const { return m_isLooping; }
 };

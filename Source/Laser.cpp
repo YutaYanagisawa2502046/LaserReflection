@@ -4,6 +4,7 @@
 #include "LaserTarget.h"
 #include "Obstacle.h"
 #include "Filter.h"
+#include "Master.h"
 
 // 💡 1. まず一番上に GetDistanceSq を定義します（これで下の関数から見つかるようになります）
 float GetDistanceSq(VECTOR p1, VECTOR p2) {
@@ -12,7 +13,8 @@ float GetDistanceSq(VECTOR p1, VECTOR p2) {
 
 Laser::Laser(VECTOR position, VECTOR direction, LaserColor initalColor, int maxReflections, float growSpeed)
 	: m_position(position), m_direction(direction), m_maxReflections(maxReflections)
-	, m_growSpeed(growSpeed), m_currentLength(0.0f), m_isLooping(false), m_initalColor(initalColor){
+	, m_growSpeed(growSpeed), m_currentLength(0.0f), m_initalColor(initalColor)
+	, m_isLaserStart(true) {
 
 	float len = std::sqrtf(m_direction.x * m_direction.x + m_direction.y * m_direction.y);
 	if (len > 0.0f) {
@@ -24,38 +26,24 @@ Laser::Laser(VECTOR position, VECTOR direction, LaserColor initalColor, int maxR
 
 void Laser::Reset() {
 	m_currentLength = 0.0f;
-	m_isLooping = false;     // ループフラグもリセット
 	m_history.clear();
+	m_isLaserStart = true;
 }
 
 void Laser::Update() {
 	// 毎フレーム、growSpeed 分だけレーザーの限界可視長さを伸ばしていく
 	const float MAX_REACH = 3000.0f;
-	if (m_currentLength < MAX_REACH && !m_isLooping) {
+	if (m_currentLength < MAX_REACH) {
 		m_currentLength += m_growSpeed;
 		if (m_currentLength > MAX_REACH) {
 			m_currentLength = MAX_REACH;
 		}
-	}
-}
-
-// 同じ軌道があるか過去の履歴をループで探す関数
-bool Laser::IsDuplicateOrbit(VECTOR pos, VECTOR dir) {
-	// 誤差の許容範囲（1ピクセル未満のズレや、わずかな角度のズレを許容する）
-	const float EPSILON = 0.01f;
-
-	for (const auto& record : m_history) {
-		// 座標の差を計算
-		float distDiff = std::sqrtf(std::powf(record.position.x - pos.x, 2) + std::powf(record.position.y - pos.y, 2));
-		// 方向の差を計算
-		float dirDiff = std::sqrtf(std::powf(record.direction.x - dir.x, 2) + std::powf(record.direction.y - dir.y, 2));
-
-		// 座標も方向もほぼ一緒なら「同じ軌道」とみなす
-		if (distDiff < EPSILON && dirDiff < EPSILON) {
-			return true;
+		if (m_isLaserStart)
+		{
+			m_isLaserStart = false;
+			Master::m_soundManager->PlaySE(SE::LASER);
 		}
 	}
-	return false;
 }
 
 // 交差判定（変更なしのため省略）
@@ -106,6 +94,9 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 	const std::vector<Filter>& filters,
 	LaserTarget& target)
 {
+
+	m_isLooping = false;
+	m_history.clear();
 	VECTOR currentStart = m_position;
 	VECTOR currentDir = m_direction;
 	float remainingLength = m_currentLength;
@@ -200,6 +191,8 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 		else if (currentLaserColor == LaserColor::Blue)
 			drawColor = GetColor(50, 50, 255);
 
+		if (m_isLooping)
+			drawColor = GetColor(255, 255, 50);
 
 		// 正しい交点（closestPoint）まで線を引く
 		DrawLine((int)currentStart.x, (int)currentStart.y, (int)closestPoint.x, (int)closestPoint.y, drawColor, 2);
@@ -220,6 +213,23 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 
 			float len = std::sqrtf(currentDir.x * currentDir.x + currentDir.y * currentDir.y);
 			if (len > 0.0f) { float tmp = 1.f / len; currentDir.x *= tmp; currentDir.y *= tmp; }
+
+
+			// 💡 【ここから追加！】無限ループチェック
+			bool isLoopDetected = false;
+			for (const auto& past : m_history) {
+				// 過去の衝突位置と、今の位置がほぼ同じかチェック (距離の誤差2px以内)
+				float distSq = VSquareSize(VSub(past.position, currentStart));
+
+				// 過去の進行方向と、今の進行方向がほぼ同じかチェック (内積がほぼ1)
+				float dirDot = VDot(past.direction, currentDir);
+
+				if (distSq < 2.0f * 2.0f && dirDot > 0.99f) {
+					m_isLooping = true; // 循環を検知！
+					break;
+				}
+			}
+
 			History.position = currentStart;
 			History.direction = currentDir;
 			History.Color = currentLaserColor;

@@ -206,7 +206,7 @@ bool Stage::Update(const VECTOR& mousePos, int mouseInput, int prevMouseInput) {
 		if (GetRand(100) <= 35)
 		{
 			float tmp = 1.0f - m_hitGlowAlpha;
-			m_hitGlowAlpha -= (tmp + 0.01f) * (1.0f / (60.0f * 1.5f));
+			m_hitGlowAlpha -= (tmp + 0.15f) * (1.0f / (60.0f * 1.5f));
 		}
 
 	}
@@ -253,34 +253,18 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 	for (auto& filter : m_filters)     filter.Draw();
 	for (auto& mirror : m_mirrors)     mirror.Draw();
 
-	for (const auto& Particle : m_particles)
-	{
-		DrawPixel(
-			static_cast<int>(Particle.pos.x),
-			static_cast<int>(Particle.pos.y),
-			Particle.color
-		);
-	}
-
 	// 1. 静的オブジェクトの描画
 	// 💡 【ここを追加！】壁に当たっているなら、着弾点を中心に広がる光の円を描く
 	if (m_isHitObstacle) {
-		//// アルファブレンド（半透明）を有効にする
-		//// これにより、パキッとした円ではなく、元の壁やレーザーと綺麗に重なる光になります
-		//SetDrawBlendMode(DX_BLENDMODE_ALPHA, 120);
 
-		//unsigned int colorGlow = GetColor(255, 215, 0); // 鮮やかなゴールド・イエロー
-
-		//// 💡 着弾点を中心に、半径5〜6pxの小さな塗りつぶしの円を描く（熱を帯びた中心核）
-		//DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
-		//	5, colorGlow, TRUE);
-
-		//// 💡 さらにその周りに、半径12pxほどの少し薄い円を重ねる（周囲に広がる光の余韻）
-		//SetDrawBlendMode(DX_BLENDMODE_ALPHA, 60);
-		//DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
-		//	12, colorGlow, TRUE);
-
-		//SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドを元に戻す
+		for (const auto& Particle : m_particles)
+		{
+			DrawPixel(
+				static_cast<int>(Particle.pos.x),
+				static_cast<int>(Particle.pos.y),
+				Particle.color
+			);
+		}
 
 		if (m_hitGlowAlpha > 0.0f) {
 			unsigned int colorGlow = GetColor(255, 215, 0); // 鮮やかなゴールド・イエロー

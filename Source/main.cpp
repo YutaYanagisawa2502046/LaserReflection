@@ -1,6 +1,9 @@
 #include "DxLib.h"
 #include "SceneManager.h"
 #include "Utility.h"
+#include "Master.h"
+
+auto Master::m_soundManager = new SoundManager();
 
 // Windowsアプリのエントリーポイント（ここからプログラムが始まります）
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
@@ -15,6 +18,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     if (DxLib_Init() == -1) {
         return -1; // 初期化に失敗したら直ちに終了
     }
+
+    Master::m_soundManager->AddSEData("Resource/SE/sen_mi_lasergun04.mp3",SE::LASER);
 
     // ---- 3. 描画先の設定（裏画面） ----
 
@@ -47,6 +52,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     }
 
     // ---- 6. 終了処理 ----
+
+    delete Master::m_soundManager;
 
     DxLib_End(); // DXライブラリの仕様終了に伴うクリーンアップ処理
 

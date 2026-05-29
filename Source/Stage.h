@@ -45,7 +45,7 @@ struct StageData {
 struct DotParticle {
 	VECTOR pos;			// 位置
 	VECTOR velocity;	// 移動速度と方向
-	float life;			// 残り寿命（フレーム数）
+	float life;			// 残り寿命秒数
 	float maxLife;		// 最大寿命
 	unsigned int color; // 色
 };
@@ -62,6 +62,8 @@ private:
 	int m_clearTimer;
 	bool m_isDragging;
 	VECTOR m_dragStartPos;
+
+	bool m_isFiring;
 
 	int m_hitObstacleIndex; // 💡 【追加】現在レーザーが当たっている壁のインデックス（-1はどこにも当たっていない）
 	bool m_isHitObstacle;    // 💡 【追加】いま壁に当たっているかどうかのフラグ
