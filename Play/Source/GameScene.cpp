@@ -288,13 +288,10 @@ void GameScene::Draw() {
 		// 💡 文字列の幅と高さを取得して、中央に配置するための座標を計算
         int HeightCount = 0;
 		const int LineDist = 10; // 行間を空けない場合は0、空ける場合は適宜数値を調整してください
-		// 💡 3行のメッセージをループで描画
         for (const auto& str : Clearstr) {
-			// 💡 文字列の幅と高さを取得して、中央に配置するための座標を計算
             int Width,Height;
             GetDrawStringSizeToHandle(&Width, &Height, NULL, str.c_str(), (int)str.size(), m_fontUiMain);
             
-			// 💡 画面中央に配置するための座標を計算（行ごとに高さをずらす）
             int YCenter = (Height + LineDist) * 3;
 
 			SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(255 * clearAlpha)); // 💡 文字のアルファ値も全体のフェードイン比率に合わせる
@@ -307,8 +304,8 @@ void GameScene::Draw() {
 
         if (CheckHitKey(KEY_INPUT_R))
         {
-            // 💡 Rキーを押すと最初からやり直せることを明示的にチェックしておく（Update内でもチェックしていますが、ここでもう一度）
 			Initialize();
+            // 💡 Rキーを押すと最初からやり直せることを明示的にチェックしておく（Update内でもチェックしていますが、ここでもう一度）
         }
         return;
     }
