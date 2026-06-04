@@ -326,10 +326,9 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 
 			// 💡 1. 中心の明るい核（最大不透明度 140 に、現在のフェード率をかける）
 			int alphaCenter = static_cast<int>(140 * m_hitGlowAlpha);
-			// 💡 ブレンドモードをアルファブレンドに設定して、透明度を反映させます。これによって、円が徐々に明るくなったり消えたりするようになります。
 			SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaCenter);
-			DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
-				5, colorGlow, TRUE);
+			DrawCircleAA(m_hitObstaclePos.x, m_hitObstaclePos.y,
+				5, 360, colorGlow, TRUE);
 
 			// 💡 2. 周囲の大きな光の広がり（最大不透明度 60 に、現在のフェード率をかける）
 			int alphaOuter = static_cast<int>(60 * m_hitGlowAlpha);
@@ -337,9 +336,9 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 
 			// 💡 広がる感じをさらに強化：発光が強くなる（m_hitGlowAlphaが増える）につれて、
 			// 円の半径自体も「10px ➔ 15px」へ、ポッと膨らむように変化させると最高に気持ちいいです！
-			int currentRadius = 10 + static_cast<int>(5 * m_hitGlowAlpha);
-			DrawCircle(static_cast<int>(m_hitObstaclePos.x), static_cast<int>(m_hitObstaclePos.y),
-				currentRadius, colorGlow, TRUE);
+			float currentRadius = 10 + 5 * m_hitGlowAlpha;
+			DrawCircleAA(m_hitObstaclePos.x, m_hitObstaclePos.y,
+				currentRadius, 360, colorGlow, TRUE);
 
 			SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0); // ブレンドを元に戻す
 		}
@@ -348,7 +347,7 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 	// ドラッグ中のプレビュー線
 	if (isDragging) {
 		// 💡 ドラッグ中は、マウスの始点と現在位置を結ぶ線を描画して、鏡の設置プレビューを表示します。これによって、鏡をどこに設置するかが視覚的にわかりやすくなります。
-		DrawLine((int)dragStartPos.x, (int)dragStartPos.y, (int)dragCurrentPos.x, (int)dragCurrentPos.y, GetColor(255, 255, 0), 2);
+		DrawLineAA(dragStartPos.x, dragStartPos.y, dragCurrentPos.x, dragCurrentPos.y, GetColor(255, 255, 0), 2);
 	}
 
 	// 2. 描画処理（ここではResetHitStateを絶対に呼ばない）
@@ -367,20 +366,20 @@ void Stage::Draw(bool isDragging, const VECTOR& dragStartPos, const VECTOR& drag
 			else if (m_laser->GetInitialColor() == LaserColor::Blue)
 				color = GetColor(0, 0, 255);
 
-			DrawString((int)m_laser->GetPosition().x, (int)m_laser->GetPosition().y + 10, "Firing...", GetColor(255, 255, 255));
-			DrawLine((int)m_laser->GetPosition().x, (int)m_laser->GetPosition().y,
-				(int)(m_laser->GetPosition().x + m_laser->GetDirection().x * 20),
-				(int)(m_laser->GetPosition().y + m_laser->GetDirection().y * 20),
+			DrawStringF(m_laser->GetPosition().x, m_laser->GetPosition().y + 10, "Firing...", GetColor(255, 255, 255));
+			DrawLineAA(m_laser->GetPosition().x, m_laser->GetPosition().y,
+				(m_laser->GetPosition().x + m_laser->GetDirection().x * 20),
+				(m_laser->GetPosition().y + m_laser->GetDirection().y * 20),
 				color, 3);
-			DrawTriangle(
-				(int)(m_laser->GetPosition().x + m_laser->GetDirection().x * 22),
-				(int)(m_laser->GetPosition().y + m_laser->GetDirection().y * 22),
-				(int)(m_laser->GetPosition().x + m_laser->GetDirection().x * 17 - m_laser->GetDirection().y * 5),
-				(int)(m_laser->GetPosition().y + m_laser->GetDirection().y * 17 + m_laser->GetDirection().x * 5),
-				(int)(m_laser->GetPosition().x + m_laser->GetDirection().x * 17 + m_laser->GetDirection().y * 5),
-				(int)(m_laser->GetPosition().y + m_laser->GetDirection().y * 17 - m_laser->GetDirection().x * 5),
+			DrawTriangleAA(
+				(m_laser->GetPosition().x + m_laser->GetDirection().x * 22),
+				(m_laser->GetPosition().y + m_laser->GetDirection().y * 22),
+				(m_laser->GetPosition().x + m_laser->GetDirection().x * 17 - m_laser->GetDirection().y * 5),
+				(m_laser->GetPosition().y + m_laser->GetDirection().y * 17 + m_laser->GetDirection().x * 5),
+				(m_laser->GetPosition().x + m_laser->GetDirection().x * 17 + m_laser->GetDirection().y * 5),
+				(m_laser->GetPosition().y + m_laser->GetDirection().y * 17 - m_laser->GetDirection().x * 5),
 				color, TRUE);
-			DrawCircle((int)m_laser->GetPosition().x, (int)m_laser->GetPosition().y, 5, color, TRUE);
+			DrawCircleAA(m_laser->GetPosition().x, m_laser->GetPosition().y, 5, 360, color, TRUE);
 		}
 	}
 	if (m_target != nullptr) {

@@ -15,20 +15,20 @@ public:
 
     void Draw() const {
         // 透過するセロハンのようなイメージで、少し太めの点線や半透明の線で描画
-        unsigned int drawColor = 
-            (m_color == LaserColor::Red) ? 
-            GetColor(255, 50, 50) : 
+        unsigned int drawColor =
+            (m_color == LaserColor::Red) ?
+            GetColor(255, 50, 50) :
             (
-                (m_color == LaserColor::Green) ? 
-                GetColor(50, 255, 50) : 
+                (m_color == LaserColor::Green) ?
+                GetColor(50, 255, 50) :
                 GetColor(50, 50, 255)
                 );
 
         // フィルターっぽく見せるために、ちょっと太め（太さ3）で描画
-        DrawLine((int)m_start.x, (int)m_start.y, (int)m_end.x, (int)m_end.y, drawColor, 3);
+        DrawLineAA(m_start.x, m_start.y, m_end.x, m_end.y, drawColor, 3);
         // 四角い枠などを端っこに描くとよりフィルターらしくなります
-        DrawCircle((int)m_start.x, (int)m_start.y, 4, drawColor, TRUE);
-        DrawCircle((int)m_end.x, (int)m_end.y, 4, drawColor, TRUE);
+        DrawCircleAA(m_start.x, m_start.y, 4, 360, drawColor, TRUE);
+        DrawCircleAA(m_end.x, m_end.y, 4, 360, drawColor, TRUE);
     }
 
 	VECTOR GetStart() const { return m_start; } // フィルターの始点を取得

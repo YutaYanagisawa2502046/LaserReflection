@@ -230,7 +230,7 @@ SceneName GameScene::Update() {
     else if (m_state == GameState::Clear) {
 		// 💡 クリア状態になったら、ドラッグ操作を無効化して、次のステージへの遷移タイマーをカウントアップ
         m_isDragging = false;
-        m_stateTransitionTimer += 1.0f / 60.0f; // 💡 約0.5秒でフェードアウト（少し速くしました）
+        m_stateTransitionTimer += 1.0f / 60.0f; // 💡 約1秒でフェードアウト（少し速くしました）
 
         if (m_stateTransitionTimer >= 1.0f) {
             m_currentStageIndex++; // 次のステージへ
@@ -281,7 +281,7 @@ void GameScene::Draw() {
         };
 
 		static float clearAlpha = 0.0f; // クリアメッセージのアルファ値を管理する静的変数
-		clearAlpha += 1.0f / 60.0f; // 約1.0秒かけて完全に表示されるようにアルファ値を増加させる
+        clearAlpha += 1.0f / 60.0f; // 約1.0秒かけて完全に表示されるようにアルファ値を増加させる
 		if (clearAlpha > 1.0f) clearAlpha = 1.0f; // アルファ値を最大1.0fにクランプ
 
 		// 💡 画面中央に大きく表示（フォントサイズは m_fontUiMain を使用）
@@ -372,7 +372,7 @@ void GameScene::Draw() {
     DrawStringToHandle(Ut::SCREEN_WIDTH - 200, 26, buf, mirrorTextColor, m_fontUiSub);
 
     // 上部とゲーム画面を隔てる美しいセパレート細線
-    DrawLine(30, 60, Ut::SCREEN_WIDTH - 30, 60, colorUiLine);
+    DrawLineAA(30, 60, Ut::SCREEN_WIDTH - 30, 60, colorUiLine);
 
     // =================================================================
     // ⌨️ 3. 下部フッターUI（常時操作説明 ＆ グリッド配置）
@@ -380,9 +380,9 @@ void GameScene::Draw() {
     int footerY = Ut::SCREEN_HEIGHT - 110;
 
     // 下部を隔てるセパレート細線
-    DrawLine(30, footerY - 10, Ut::SCREEN_WIDTH - 30, footerY - 10, colorUiLine);
+    DrawLineAA(30, footerY - 10, Ut::SCREEN_WIDTH - 30, footerY - 10, colorUiLine);
     SetDrawBlendMode(DX_BLENDMODE_ALPHA, 50);
-    DrawBox(30, footerY - 10, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(0, 0, 0), TRUE);
+    DrawBoxAA(30, footerY - 10, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, GetColor(0, 0, 0), TRUE);
     SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
     // 【左側カラム：操作説明】
@@ -414,7 +414,7 @@ void GameScene::Draw() {
 
         // アルファブレンドで画面全体を優しく包み込む
         SetDrawBlendMode(DX_BLENDMODE_ALPHA, alphaInt);
-        DrawBox(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, colorFadeMask, TRUE);
+        DrawBoxAA(0, 0, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, colorFadeMask, TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
     }
     
@@ -441,7 +441,7 @@ void GameScene::Draw() {
 
         // 文字の背後の黒い帯の不透明度も、文字の浮き上がりに同期させる
         SetDrawBlendMode(DX_BLENDMODE_ALPHA, static_cast<int>(180 * textAlphaRatio));
-        DrawBox(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(10, 15, 20), TRUE);
+        DrawBoxAA(0, Ut::SCREEN_HEIGHT / 2 - 40, Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT / 2 + 40, GetColor(10, 15, 20), TRUE);
         SetDrawBlendMode(DX_BLENDMODE_NOBLEND, 0);
 
         // 確定した色で「STAGE CLEAR」を描画

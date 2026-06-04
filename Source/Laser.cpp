@@ -209,7 +209,7 @@ void Laser::Draw(const std::vector<Mirror>& mirrors,
 			drawColor = GetColor(255, 255, 50);
 
 		// 正しい交点（closestPoint）まで線を引く
-		DrawLine((int)currentStart.x, (int)currentStart.y, (int)closestPoint.x, (int)closestPoint.y, drawColor, 2);
+		DrawLineAA(currentStart.x, currentStart.y, closestPoint.x, closestPoint.y, drawColor, 2);
 
 		// 💡 正しい距離（minDistance）をマイナスするので、残りの長さが正常に維持されます
 		remainingLength -= minDistance;

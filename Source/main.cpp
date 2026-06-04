@@ -9,7 +9,7 @@ auto Master::m_soundManager = new SoundManager();
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
 
     // ---- 1. DXライブラリの初期化前設定 ----
-    ChangeWindowMode(TRUE);             // ウィンドウモードで起動（FALSEにするとフルスクリーン）
+    ChangeWindowMode(FALSE);             // ウィンドウモードで起動（FALSEにするとフルスクリーン）
     SetGraphMode(Ut::SCREEN_WIDTH, Ut::SCREEN_HEIGHT, 32);         // 画面サイズを 640x480、カラーを32bitに設定
     SetMainWindowText("レーザー反射ゲーム"); // ウィンドウのタイトルバーのテキストを設定
 
@@ -18,6 +18,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine
     if (DxLib_Init() == -1) {
         return -1; // 初期化に失敗したら直ちに終了
     }
+
+    SetMouseDispFlag(TRUE);
 
 	// SEデータの読み込み：Masterクラスのサウンドマネージャーに、レーザーSEのファイルを登録します
     Master::m_soundManager->AddSEData("Resource/SE/sen_mi_lasergun04.mp3",SE::LASER);

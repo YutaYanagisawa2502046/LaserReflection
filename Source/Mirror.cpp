@@ -45,13 +45,13 @@ void Mirror::CalculateNormal() {
 
 void Mirror::Draw() {
     // 反射板を緑色の太線で描画
-    DrawLine((int)m_start.x, (int)m_start.y, (int)m_end.x, (int)m_end.y, GetColor(0, 255, 0), 5);
+    DrawLineAA(m_start.x, m_start.y, m_end.x, m_end.y, GetColor(0, 255, 0), 5);
 
     // 【デバッグ用】法線（向き）がどちらを向いているか、中央から短い線で視覚化
-    int midX = (int)((m_start.x + m_end.x) / 2);
-    int midY = (int)((m_start.y + m_end.y) / 2);
-	// 法線の向きに沿って、黄色い線を15ピクセル伸ばして描画します
-    DrawLine(midX, midY, midX + (int)(m_normal.x * 15), midY + (int)(m_normal.y * 15), GetColor(255, 255, 0), 1);
+    float midX = (m_start.x + m_end.x) * 0.5f;
+    float midY = (m_start.y + m_end.y) * 0.5f;
+    DrawLineAA(midX, midY, midX + m_normal.x * 15, midY + m_normal.y * 15, GetColor(255, 255, 0), 1);
+    DrawLineAA(midX, midY, midX + m_normal.x * -15, midY + m_normal.y * -15, GetColor(255, 255, 0), 1);
 }
 
 void Mirror::Update() {
